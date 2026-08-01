@@ -1,0 +1,166 @@
+import { useEffect, useState } from "react";
+import api, { rupiah, formatApiError } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
+import { Plus, Pencil, Trash2, Search, Package } from "lucide-react";
+
+const EMPTY = { name: "", sku: "", barcode: "", category_id: "", price: "", cost: "", stock: "", min_stock: 5, unit: "pcs", image: "", active: true };
+
+export default function Products() {
+  const { user } = useAuth();
+  const canEdit = ["Owner", "Manager", "Gudang"].includes(user?.role);
+  const [products, setProducts] = useState([]);
+  const [cats, setCats] = useState([]);
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState(EMPTY);
+  const [editId, setEditId] = useState(null);
+
+  const load = () => {
+    api.get("/products").then((r) => setProducts(r.data));
+    api.get("/categories").then((r) => setCats(r.data));
+  };
+  useEffect(load, []);
+
+  const openNew = () => { setForm(EMPTY); setEditId(null); setOpen(true); };
+  const openEdit = (p) => { setForm({ ...p, category_id: p.category_id || "" }); setEditId(p.id); setOpen(true); };
+
+  const save = async () => {
+    if (!form.name || form.price === "") return toast.error("Nama dan harga wajib diisi");
+    const payload = {
+      ...form,
+      category_id: form.category_id || null,
+      price: Number(form.price), cost: Number(form.cost) || 0,
+      stock: Number(form.stock) || 0, min_stock: Number(form.min_stock) || 0,
+    };
+    try {
+      if (editId) await api.put(`/products/${editId}`, payload);
+      else await api.post("/products", payload);
+      toast.success("Produk disimpan");
+      setOpen(false);
+      load();
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail));
+    }
+  };
+
+  const del = async (id) => {
+    if (!window.confirm("Hapus produk ini?")) return;
+    await api.delete(`/products/${id}`);
+    toast.success("Produk dihapus");
+    load();
+  };
+
+  const catName = (id) => cats.find((c) => c.id === id)?.name || "-";
+  const filtered = products.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()));
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Master Data</p>
+          <h1 className="font-display text-3xl font-bold tracking-tight">Produk</h1>
+        </div>
+        {canEdit && (
+          <Button onClick={openNew} className="gap-2" data-testid="add-product-button">
+            <Plus className="h-4 w-4" /> Tambah Produk
+          </Button>
+        )}
+      </div>
+
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari produk..." className="pl-10" data-testid="product-search" />
+      </div>
+
+      <div className="overflow-hidden rounded-lg border border-border">
+        <table className="w-full text-sm">
+          <thead className="bg-secondary text-xs uppercase tracking-wider text-muted-foreground">
+            <tr>
+              <th className="px-4 py-3 text-left">Produk</th>
+              <th className="px-4 py-3 text-left">Kategori</th>
+              <th className="px-4 py-3 text-right">Harga</th>
+              <th className="px-4 py-3 text-right">Stok</th>
+              <th className="px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((p) => (
+              <tr key={p.id} className="border-t border-border" data-testid={`product-row-${p.id}`}>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-md bg-secondary">
+                      {p.image ? <img src={p.image} alt="" className="h-full w-full rounded-md object-cover" /> : <Package className="h-4 w-4 text-muted-foreground" />}
+                    </div>
+                    <div>
+                      <p className="font-medium">{p.name}</p>
+                      <p className="text-xs text-muted-foreground">{p.sku || p.barcode || "—"}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-muted-foreground">{catName(p.category_id)}</td>
+                <td className="px-4 py-3 text-right font-medium">{rupiah(p.price)}</td>
+                <td className="px-4 py-3 text-right">
+                  <span className={p.stock <= p.min_stock ? "font-semibold text-orange-600" : ""}>{p.stock} {p.unit}</span>
+                </td>
+                <td className="px-4 py-3 text-right">
+                  {canEdit && (
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(p)} data-testid={`edit-product-${p.id}`}><Pencil className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => del(p.id)} data-testid={`delete-product-${p.id}`}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {filtered.length === 0 && (
+              <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">Belum ada produk.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto" data-testid="product-dialog">
+          <DialogHeader><DialogTitle className="font-display">{editId ? "Edit Produk" : "Tambah Produk"}</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2 space-y-1">
+              <Label>Nama Produk</Label>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} data-testid="product-name-input" />
+            </div>
+            <div className="space-y-1"><Label>SKU</Label><Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} /></div>
+            <div className="space-y-1"><Label>Barcode</Label><Input value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} data-testid="product-barcode-input" /></div>
+            <div className="col-span-2 space-y-1">
+              <Label>Kategori</Label>
+              <Select value={form.category_id || "none"} onValueChange={(v) => setForm({ ...form, category_id: v === "none" ? "" : v })}>
+                <SelectTrigger data-testid="product-category-select"><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Tanpa kategori</SelectItem>
+                  {cats.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1"><Label>Harga Jual</Label><Input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} data-testid="product-price-input" /></div>
+            <div className="space-y-1"><Label>Harga Modal</Label><Input type="number" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} /></div>
+            <div className="space-y-1"><Label>Stok</Label><Input type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} data-testid="product-stock-input" /></div>
+            <div className="space-y-1"><Label>Min. Stok</Label><Input type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: e.target.value })} /></div>
+            <div className="space-y-1"><Label>Satuan</Label><Input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} /></div>
+            <div className="col-span-2 space-y-1"><Label>URL Gambar (opsional)</Label><Input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} /></div>
+          </div>
+          <DialogFooter>
+            <Button onClick={save} className="w-full" data-testid="save-product-button">Simpan</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

@@ -1,0 +1,88 @@
+import { useEffect, useState } from "react";
+import api, { formatApiError } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { Plus, Pencil, Trash2, Tag } from "lucide-react";
+
+const COLORS = ["#2563EB", "#7C3AED", "#F97316", "#10B981", "#EF4444", "#0EA5E9"];
+
+export default function Categories() {
+  const [cats, setCats] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ name: "", color: "#2563EB" });
+  const [editId, setEditId] = useState(null);
+
+  const load = () => { api.get("/categories").then((r) => setCats(r.data)); };
+  useEffect(load, []);
+
+  const save = async () => {
+    if (!form.name) return toast.error("Nama kategori wajib diisi");
+    try {
+      if (editId) await api.put(`/categories/${editId}`, form);
+      else await api.post("/categories", form);
+      toast.success("Kategori disimpan");
+      setOpen(false);
+      load();
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail));
+    }
+  };
+  const del = async (id) => {
+    if (!window.confirm("Hapus kategori ini?")) return;
+    await api.delete(`/categories/${id}`);
+    load();
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Master Data</p>
+          <h1 className="font-display text-3xl font-bold tracking-tight">Kategori</h1>
+        </div>
+        <Button onClick={() => { setForm({ name: "", color: "#2563EB" }); setEditId(null); setOpen(true); }} className="gap-2" data-testid="add-category-button">
+          <Plus className="h-4 w-4" /> Tambah
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {cats.map((c) => (
+          <div key={c.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-4" data-testid={`category-${c.id}`}>
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-md" style={{ background: `${c.color}22`, color: c.color }}>
+                <Tag className="h-4 w-4" />
+              </div>
+              <span className="font-medium">{c.name}</span>
+            </div>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="icon" onClick={() => { setForm(c); setEditId(c.id); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => del(c.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+            </div>
+          </div>
+        ))}
+        {cats.length === 0 && <p className="text-sm text-muted-foreground">Belum ada kategori.</p>}
+      </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent data-testid="category-dialog">
+          <DialogHeader><DialogTitle className="font-display">{editId ? "Edit" : "Tambah"} Kategori</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1"><Label>Nama</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} data-testid="category-name-input" /></div>
+            <div className="space-y-2">
+              <Label>Warna</Label>
+              <div className="flex gap-2">
+                {COLORS.map((col) => (
+                  <button key={col} onClick={() => setForm({ ...form, color: col })} className={`h-8 w-8 rounded-full border-2 ${form.color === col ? "border-foreground" : "border-transparent"}`} style={{ background: col }} />
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter><Button onClick={save} className="w-full" data-testid="save-category-button">Simpan</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
