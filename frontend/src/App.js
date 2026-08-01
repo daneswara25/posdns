@@ -40,12 +40,12 @@ function App() {
                 }
               >
                 <Route index element={<Dashboard />} />
-                <Route path="produk" element={<Products />} />
-                <Route path="kategori" element={<Categories />} />
-                <Route path="inventory" element={<Inventory />} />
-                <Route path="laporan" element={<Reports />} />
-                <Route path="pengguna" element={<Users />} />
-                <Route path="pengaturan" element={<Settings />} />
+                <Route path="produk" element={<ProtectedRoute roles={["Owner", "Manager", "Gudang"]}><Products /></ProtectedRoute>} />
+                <Route path="kategori" element={<ProtectedRoute roles={["Owner", "Manager", "Gudang"]}><Categories /></ProtectedRoute>} />
+                <Route path="inventory" element={<ProtectedRoute roles={["Owner", "Manager", "Gudang"]}><Inventory /></ProtectedRoute>} />
+                <Route path="laporan" element={<ProtectedRoute roles={["Owner", "Manager"]}><Reports /></ProtectedRoute>} />
+                <Route path="pengguna" element={<ProtectedRoute roles={["Owner", "Manager"]}><Users /></ProtectedRoute>} />
+                <Route path="pengaturan" element={<ProtectedRoute roles={["Owner", "Manager"]}><Settings /></ProtectedRoute>} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
