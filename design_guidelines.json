@@ -1,0 +1,117 @@
+{
+  "app_name": "Cloud POS & Dashboard SaaS",
+  "role": "E1 Anti-AI Designer",
+  "design_context": "SaaS / Admin Dashboard + Mobile/Tablet POS",
+  "general_ui_ux_design_guidelines": [
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur) combined with solid tint, NEVER pure transparent.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Apply crisp edges via semi-transparent borders + shadows.",
+    "Every interaction needs micro-animations (hover states, transitions). Exclude transforms from universal 'transition-all'."
+  ],
+  "theme_and_colors": {
+    "archetype": "Swiss & High-Contrast mixed with Performance Pro for checkout speed.",
+    "rules": [
+      "Forbidden Colors: Teal Green, Teal Blue (#1B93A4).",
+      "Never use pure #000000 or #808080. Always tint neutral greys with a slight cool blue or warm orange.",
+      "High contrast is mandatory for the POS screen to ensure fast scanning by cashiers."
+    ],
+    "palette": {
+      "primary": "Electric Blue (#2563EB) for high-visibility actions.",
+      "destructive": "Signal Red (#EF4444) for void/remove item actions.",
+      "background_light": "hsl(210, 20%, 98%)",
+      "background_dark": "hsl(220, 10%, 4%)",
+      "surface_light": "#FFFFFF",
+      "surface_dark": "hsl(220, 10%, 8%)"
+    }
+  },
+  "typography": {
+    "heading_font": "Outfit",
+    "body_font": "Manrope",
+    "forbidden_fonts": [
+      "Inter",
+      "Roboto",
+      "Open Sans",
+      "Lato",
+      "Space Grotesk"
+    ],
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl tracking-tight font-light or font-black",
+      "h2": "text-2xl sm:text-3xl tracking-tight",
+      "h3": "text-xl sm:text-2xl",
+      "body": "text-base leading-relaxed",
+      "labels": "text-xs uppercase tracking-[0.2em] font-semibold"
+    }
+  },
+  "layouts": {
+    "global": "Mobile-first responsive grids. Ensure optical alignment.",
+    "pos_tablet_screen": {
+      "pattern": "Split Workspace",
+      "structure": "grid-cols-1 lg:grid-cols-12 gap-6",
+      "left_panel": "col-span-1 lg:col-span-8. Contains Category-first browsing pills, search bar, and high-density product grid.",
+      "right_panel": "col-span-1 lg:col-span-4. Persistent cart/receipt, total calculation, and massive touch-target 'Pay' button."
+    },
+    "admin_dashboard": {
+      "pattern": "Bento Grid / Mode B (High Density)",
+      "structure": "grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6",
+      "widgets": "Cardless or 1px border. No soft shadows on flat widgets. 100% pixel utilization with h-full."
+    }
+  },
+  "components": {
+    "shadcn_overrides": [
+      "Do not overuse standard cards. Use flat, rectangular, dense styles.",
+      "Input/Buttons on POS screen MUST have larger touch targets (h-12 or h-14) for fast tablet usage.",
+      "Dropdowns and Overlays MUST NOT have transparent backgrounds. Use bg-popover or bg-white/90 with backdrop-blur-xl.",
+      "Override Shadcn default border radius to max 8px (rounded-md)."
+    ],
+    "navigation": "Dashboard: Left sidebar (collapsible). POS: Locked top bar or bottom tab bar."
+  },
+  "visual_enhancers": {
+    "surfaces": "Use 'Grid Borders' (border-collapse style) for the Admin data tables. Use 'Neumorphism' clay & crisp variants for dashboard widgets.",
+    "glassmorphism": "For sticky headers or modal overlays: bg-white/80 (light) or bg-black/70 (dark) + backdrop-blur-xl + 1px delicate inner stroke + saturate-150.",
+    "motion": "Use Framer Motion for micro-interactions (e.g., item added to cart pop). Hover states must lift (-translate-y-1) and darken border."
+  },
+  "accessibility_and_testing": {
+    "contrast": "Minimum 4.5:1 for text. Use APCA guidelines.",
+    "data_testid": "MANDATORY. All interactive elements (buttons, inputs, cart items, tabs) MUST include data-testid (e.g., data-testid='checkout-pay-button')."
+  },
+  "media": {
+    "image_urls": [
+      {
+        "url": "https://images.unsplash.com/photo-1726137569911-bc03e55fd87f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NjV8MHwxfHNlYXJjaHwyfHxyZXRhaWwlMjBzdG9yZSUyMGNoZWNrb3V0fGVufDB8fHx8MTc4NTYwMDAyNnww&ixlib=rb-4.1.0&q=85",
+        "category": "Login Background",
+        "description": "Person holding a credit card at a modern retail checkout. Use with a heavy overlay (bg-black/60) for contrast."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1666875753105-c63a6f3bdc86?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2OTV8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMHN0YXRpc3RpY3MlMjBncmFwaCUyMGJhY2tncm91bmR8ZW58MHx8fHwxNzg1NjAwMDI3fDA&ixlib=rb-4.1.0&q=85",
+        "category": "Dashboard Empty State / Banner",
+        "description": "Abstract business statistics graphic. Use sparingly as a visual enhancer in empty states."
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "1. ALL frontend files must be written in .js (React JSX), NOT .tsx.",
+    "2. The interface language MUST be Bahasa Indonesia (e.g., Keranjang, Diskon, Pajak, Bayar, Tunai).",
+    "3. Implement a Light/Dark mode toggle (standard Tailwind 'dark' class).",
+    "4. Start with the Layout shell (Sidebar + Header). Ensure Header is NEVER fully transparent.",
+    "5. MOCKED INTEGRATION: Data APIs for Master Data, Inventory, and Sales must be mocked locally using state or local mock files. (HIGHLIGHT: MOCKED)",
+    "6. Do not center-align the app container in CSS.",
+    "7. Ensure the POS Kasir route has a distinct layout optimized for tablets (hide admin sidebar, maximize workspace)."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. In frontend design, this creates what users call the 'AI slop' aesthetic. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur).",
+    "You MUST NOT apply universal transition. Eg: transition: all. Always add transitions for specific interactive elements excluding transforms.",
+    "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file. This disrupts the human natural reading flow of text.",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
+    "NEVER: use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "Prioritize using pre-existing components from src/components/ui when applicable.",
+    "Use sonner for toasts, located in /app/frontend/src/components/ui/sonner.js"
+  ]
+}
