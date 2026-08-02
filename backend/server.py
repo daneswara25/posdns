@@ -685,6 +685,9 @@ async def complete_order(oid: str, data: SettleOrderInput, user: dict = Depends(
         raise HTTPException(status_code=404, detail="Pesanan tidak ditemukan")
     if order.get("status") == "Selesai":
         raise HTTPException(status_code=400, detail="Pesanan sudah selesai")
+    remaining = max(0, order["total"] - order.get("deposit_amount", 0))
+    if data.paid_amount < remaining:
+        raise HTTPException(status_code=400, detail="Nominal pelunasan kurang dari sisa tagihan")
     # decrement stock now (order fulfilled)
     for i in order["items"]:
         prod = await db.products.find_one({"id": i["product_id"], "tenant_id": user["tenant_id"]})
