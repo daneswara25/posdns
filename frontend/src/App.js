@@ -14,6 +14,10 @@ import Inventory from "@/pages/Inventory";
 import Reports from "@/pages/Reports";
 import Users from "@/pages/Users";
 import Settings from "@/pages/Settings";
+import Customers from "@/pages/Customers";
+import Suppliers from "@/pages/Suppliers";
+import Purchases from "@/pages/Purchases";
+import Orders from "@/pages/Orders";
 
 function App() {
   return (
@@ -43,6 +47,10 @@ function App() {
                 <Route path="produk" element={<ProtectedRoute roles={["Owner", "Manager", "Gudang"]}><Products /></ProtectedRoute>} />
                 <Route path="kategori" element={<ProtectedRoute roles={["Owner", "Manager", "Gudang"]}><Categories /></ProtectedRoute>} />
                 <Route path="inventory" element={<ProtectedRoute roles={["Owner", "Manager", "Gudang"]}><Inventory /></ProtectedRoute>} />
+                <Route path="pelanggan" element={<ProtectedRoute roles={["Owner", "Manager", "Kasir"]}><Customers /></ProtectedRoute>} />
+                <Route path="pesanan" element={<ProtectedRoute roles={["Owner", "Manager", "Kasir"]}><Orders /></ProtectedRoute>} />
+                <Route path="supplier" element={<ProtectedRoute roles={["Owner", "Manager", "Gudang"]}><Suppliers /></ProtectedRoute>} />
+                <Route path="pembelian" element={<ProtectedRoute roles={["Owner", "Manager", "Gudang"]}><Purchases /></ProtectedRoute>} />
                 <Route path="laporan" element={<ProtectedRoute roles={["Owner", "Manager"]}><Reports /></ProtectedRoute>} />
                 <Route path="pengguna" element={<ProtectedRoute roles={["Owner", "Manager"]}><Users /></ProtectedRoute>} />
                 <Route path="pengaturan" element={<ProtectedRoute roles={["Owner", "Manager"]}><Settings /></ProtectedRoute>} />

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard, Package, Tags, Warehouse, BarChart3, Users as UsersIcon,
   Settings as SettingsIcon, ShoppingCart, Sun, Moon, LogOut, Menu, X, Store,
+  UserCircle, Truck, ClipboardList, ShoppingBag,
 } from "lucide-react";
 
 const NAV = [
@@ -13,6 +14,10 @@ const NAV = [
   { to: "/produk", label: "Produk", icon: Package, roles: ["Owner", "Manager", "Gudang"] },
   { to: "/kategori", label: "Kategori", icon: Tags, roles: ["Owner", "Manager", "Gudang"] },
   { to: "/inventory", label: "Inventory", icon: Warehouse, roles: ["Owner", "Manager", "Gudang"] },
+  { to: "/pelanggan", label: "Pelanggan", icon: UserCircle, roles: ["Owner", "Manager", "Kasir"] },
+  { to: "/pesanan", label: "Pesanan", icon: ShoppingBag, roles: ["Owner", "Manager", "Kasir"] },
+  { to: "/supplier", label: "Supplier", icon: Truck, roles: ["Owner", "Manager", "Gudang"] },
+  { to: "/pembelian", label: "Pembelian", icon: ClipboardList, roles: ["Owner", "Manager", "Gudang"] },
   { to: "/laporan", label: "Laporan", icon: BarChart3, roles: ["Owner", "Manager"] },
   { to: "/pengguna", label: "Pengguna", icon: UsersIcon, roles: ["Owner", "Manager"] },
   { to: "/pengaturan", label: "Pengaturan", icon: SettingsIcon, roles: ["Owner", "Manager"] },

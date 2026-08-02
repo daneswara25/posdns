@@ -152,6 +152,8 @@ class SaleInput(BaseModel):
     payment_method: Literal["Tunai", "Kartu", "QRIS", "E-Wallet"]
     paid_amount: float = 0
     customer_name: Optional[str] = ""
+    customer_id: Optional[str] = None
+    order_id: Optional[str] = None
 
 
 class StockInput(BaseModel):
@@ -168,6 +170,56 @@ class SettingsInput(BaseModel):
     currency: Optional[str] = None
     tax_rate: Optional[float] = None
     receipt_footer: Optional[str] = None
+
+
+class CustomerInput(BaseModel):
+    name: str
+    phone: Optional[str] = ""
+    email: Optional[str] = ""
+    address: Optional[str] = ""
+
+
+class SupplierInput(BaseModel):
+    name: str
+    phone: Optional[str] = ""
+    email: Optional[str] = ""
+    address: Optional[str] = ""
+
+
+class POItem(BaseModel):
+    product_id: str
+    name: str
+    qty: int
+    cost: float = 0
+
+
+class PurchaseOrderInput(BaseModel):
+    supplier_id: Optional[str] = None
+    supplier_name: Optional[str] = ""
+    items: List[POItem]
+    note: Optional[str] = ""
+
+
+class HeldOrderInput(BaseModel):
+    label: str
+    items: List[SaleItem]
+    discount: float = 0
+
+
+class CustomOrderInput(BaseModel):
+    customer_id: Optional[str] = None
+    customer_name: Optional[str] = ""
+    items: List[SaleItem]
+    discount: float = 0
+    tax_rate: float = 0
+    deposit_amount: float = 0
+    deposit_method: Literal["Tunai", "Kartu", "QRIS", "E-Wallet"] = "Tunai"
+    note: Optional[str] = ""
+
+
+class SettleOrderInput(BaseModel):
+    payment_method: Literal["Tunai", "Kartu", "QRIS", "E-Wallet"]
+    paid_amount: float = 0
 
 
 # ---------- Auth ----------
@@ -352,13 +404,25 @@ async def create_sale(data: SaleInput, user: dict = Depends(get_current_user)):
             })
     count = await db.sales.count_documents({"tenant_id": user["tenant_id"]})
     invoice = f"INV-{datetime.now().strftime('%y%m%d')}-{count + 1:04d}"
+    # loyalty points: 1 poin per Rp1.000
+    points = int(total // 1000)
+    cust_name = data.customer_name
+    if data.customer_id:
+        cust = await db.customers.find_one({"id": data.customer_id, "tenant_id": user["tenant_id"]})
+        if cust:
+            cust_name = cust["name"]
+            await db.customers.update_one(
+                {"id": data.customer_id},
+                {"$inc": {"points": points, "total_spent": total, "visits": 1}},
+            )
     doc = {
         "id": new_id(), "tenant_id": user["tenant_id"], "invoice": invoice,
         "items": [i.model_dump() for i in data.items], "subtotal": subtotal,
         "discount": data.discount, "tax_rate": data.tax_rate, "tax": taxed,
         "total": total, "cost": total_cost, "profit": (subtotal - data.discount) - total_cost,
         "payment_method": data.payment_method, "paid_amount": data.paid_amount,
-        "change": max(0, data.paid_amount - total), "customer_name": data.customer_name,
+        "change": max(0, data.paid_amount - total), "customer_name": cust_name,
+        "customer_id": data.customer_id, "points_earned": points,
         "cashier": user.get("name", ""), "cashier_id": user["id"], "created_at": now_iso(),
     }
     await db.sales.insert_one(doc)
@@ -455,6 +519,211 @@ async def get_settings(user: dict = Depends(get_current_user)):
 async def update_settings(data: SettingsInput, user: dict = Depends(require_roles("Owner", "Manager"))):
     upd = {k: v for k, v in data.model_dump().items() if v is not None}
     await db.settings.update_one({"tenant_id": user["tenant_id"]}, {"$set": upd}, upsert=True)
+    return {"ok": True}
+
+
+# ---------- Customers / Membership ----------
+@api_router.get("/customers")
+async def list_customers(user: dict = Depends(get_current_user)):
+    return await db.customers.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).sort("created_at", -1).to_list(2000)
+
+
+@api_router.post("/customers")
+async def create_customer(data: CustomerInput, user: dict = Depends(get_current_user)):
+    doc = {"id": new_id(), "tenant_id": user["tenant_id"], **data.model_dump(),
+           "points": 0, "total_spent": 0, "visits": 0, "created_at": now_iso()}
+    await db.customers.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.put("/customers/{cid}")
+async def update_customer(cid: str, data: CustomerInput, user: dict = Depends(get_current_user)):
+    await db.customers.update_one({"id": cid, "tenant_id": user["tenant_id"]}, {"$set": data.model_dump()})
+    return {"ok": True}
+
+
+@api_router.delete("/customers/{cid}")
+async def delete_customer(cid: str, user: dict = Depends(require_roles("Owner", "Manager"))):
+    await db.customers.delete_one({"id": cid, "tenant_id": user["tenant_id"]})
+    return {"ok": True}
+
+
+@api_router.get("/customers/{cid}/history")
+async def customer_history(cid: str, user: dict = Depends(get_current_user)):
+    return await db.sales.find({"tenant_id": user["tenant_id"], "customer_id": cid}, {"_id": 0}).sort("created_at", -1).to_list(500)
+
+
+# ---------- Suppliers ----------
+@api_router.get("/suppliers")
+async def list_suppliers(user: dict = Depends(get_current_user)):
+    return await db.suppliers.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+
+
+@api_router.post("/suppliers")
+async def create_supplier(data: SupplierInput, user: dict = Depends(require_roles("Owner", "Manager", "Gudang"))):
+    doc = {"id": new_id(), "tenant_id": user["tenant_id"], **data.model_dump(), "created_at": now_iso()}
+    await db.suppliers.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.put("/suppliers/{sid}")
+async def update_supplier(sid: str, data: SupplierInput, user: dict = Depends(require_roles("Owner", "Manager", "Gudang"))):
+    await db.suppliers.update_one({"id": sid, "tenant_id": user["tenant_id"]}, {"$set": data.model_dump()})
+    return {"ok": True}
+
+
+@api_router.delete("/suppliers/{sid}")
+async def delete_supplier(sid: str, user: dict = Depends(require_roles("Owner", "Manager"))):
+    await db.suppliers.delete_one({"id": sid, "tenant_id": user["tenant_id"]})
+    return {"ok": True}
+
+
+# ---------- Purchase Orders ----------
+@api_router.get("/purchases")
+async def list_purchases(user: dict = Depends(require_roles("Owner", "Manager", "Gudang"))):
+    return await db.purchases.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+
+
+@api_router.post("/purchases")
+async def create_purchase(data: PurchaseOrderInput, user: dict = Depends(require_roles("Owner", "Manager", "Gudang"))):
+    if not data.items:
+        raise HTTPException(status_code=400, detail="Item pembelian kosong")
+    total = sum(i.qty * i.cost for i in data.items)
+    count = await db.purchases.count_documents({"tenant_id": user["tenant_id"]})
+    doc = {
+        "id": new_id(), "tenant_id": user["tenant_id"], "po_number": f"PO-{datetime.now().strftime('%y%m%d')}-{count + 1:04d}",
+        "supplier_id": data.supplier_id, "supplier_name": data.supplier_name,
+        "items": [i.model_dump() for i in data.items], "total": total, "note": data.note,
+        "status": "Menunggu", "cashier": user.get("name", ""), "created_at": now_iso(),
+    }
+    await db.purchases.insert_one(doc)
+    await log_activity(user["tenant_id"], user, "Buat PO", f"{doc['po_number']} - Rp{total:,.0f}")
+    return clean(doc)
+
+
+@api_router.post("/purchases/{pid}/receive")
+async def receive_purchase(pid: str, user: dict = Depends(require_roles("Owner", "Manager", "Gudang"))):
+    po = await db.purchases.find_one({"id": pid, "tenant_id": user["tenant_id"]})
+    if not po:
+        raise HTTPException(status_code=404, detail="PO tidak ditemukan")
+    if po.get("status") == "Diterima":
+        raise HTTPException(status_code=400, detail="PO sudah diterima")
+    for i in po["items"]:
+        prod = await db.products.find_one({"id": i["product_id"], "tenant_id": user["tenant_id"]})
+        if prod:
+            before = prod.get("stock", 0)
+            after = before + i["qty"]
+            await db.products.update_one({"id": i["product_id"]}, {"$set": {"stock": after, "cost": i.get("cost", prod.get("cost", 0))}})
+            await db.stock_movements.insert_one({
+                "id": new_id(), "tenant_id": user["tenant_id"], "product_id": i["product_id"],
+                "product_name": i["name"], "type": "Masuk", "qty": i["qty"], "before": before,
+                "after": after, "note": f"Penerimaan {po['po_number']}", "user_name": user.get("name", ""), "created_at": now_iso(),
+            })
+    await db.purchases.update_one({"id": pid}, {"$set": {"status": "Diterima", "received_at": now_iso()}})
+    await log_activity(user["tenant_id"], user, "Terima Barang", po["po_number"])
+    return {"ok": True}
+
+
+# ---------- Held Orders (Hold) ----------
+@api_router.get("/held-orders")
+async def list_held(user: dict = Depends(get_current_user)):
+    return await db.held_orders.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).sort("created_at", -1).to_list(200)
+
+
+@api_router.post("/held-orders")
+async def create_held(data: HeldOrderInput, user: dict = Depends(get_current_user)):
+    doc = {"id": new_id(), "tenant_id": user["tenant_id"], "label": data.label,
+           "items": [i.model_dump() for i in data.items], "discount": data.discount,
+           "cashier": user.get("name", ""), "created_at": now_iso()}
+    await db.held_orders.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.delete("/held-orders/{hid}")
+async def delete_held(hid: str, user: dict = Depends(get_current_user)):
+    await db.held_orders.delete_one({"id": hid, "tenant_id": user["tenant_id"]})
+    return {"ok": True}
+
+
+# ---------- Custom Orders with Deposit ----------
+@api_router.get("/orders")
+async def list_orders(user: dict = Depends(get_current_user)):
+    return await db.orders.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).sort("created_at", -1).to_list(500)
+
+
+@api_router.post("/orders")
+async def create_order(data: CustomOrderInput, user: dict = Depends(get_current_user)):
+    if not data.items:
+        raise HTTPException(status_code=400, detail="Item pesanan kosong")
+    subtotal = sum(i.price * i.qty for i in data.items)
+    taxed = (subtotal - data.discount) * (data.tax_rate / 100)
+    total = subtotal - data.discount + taxed
+    cust_name = data.customer_name
+    if data.customer_id:
+        c = await db.customers.find_one({"id": data.customer_id, "tenant_id": user["tenant_id"]})
+        if c:
+            cust_name = c["name"]
+    count = await db.orders.count_documents({"tenant_id": user["tenant_id"]})
+    doc = {
+        "id": new_id(), "tenant_id": user["tenant_id"], "order_number": f"ORD-{datetime.now().strftime('%y%m%d')}-{count + 1:04d}",
+        "customer_id": data.customer_id, "customer_name": cust_name,
+        "items": [i.model_dump() for i in data.items], "subtotal": subtotal,
+        "discount": data.discount, "tax_rate": data.tax_rate, "tax": taxed, "total": total,
+        "deposit_amount": data.deposit_amount, "deposit_method": data.deposit_method,
+        "remaining": max(0, total - data.deposit_amount), "note": data.note,
+        "status": "Proses", "cashier": user.get("name", ""), "created_at": now_iso(),
+    }
+    await db.orders.insert_one(doc)
+    await log_activity(user["tenant_id"], user, "Pesanan Custom + Deposit", f"{doc['order_number']} DP Rp{data.deposit_amount:,.0f}")
+    return clean(doc)
+
+
+@api_router.post("/orders/{oid}/complete")
+async def complete_order(oid: str, data: SettleOrderInput, user: dict = Depends(get_current_user)):
+    order = await db.orders.find_one({"id": oid, "tenant_id": user["tenant_id"]})
+    if not order:
+        raise HTTPException(status_code=404, detail="Pesanan tidak ditemukan")
+    if order.get("status") == "Selesai":
+        raise HTTPException(status_code=400, detail="Pesanan sudah selesai")
+    # decrement stock now (order fulfilled)
+    for i in order["items"]:
+        prod = await db.products.find_one({"id": i["product_id"], "tenant_id": user["tenant_id"]})
+        if prod:
+            before = prod.get("stock", 0)
+            after = before - i["qty"]
+            await db.products.update_one({"id": i["product_id"]}, {"$set": {"stock": after}})
+            await db.stock_movements.insert_one({
+                "id": new_id(), "tenant_id": user["tenant_id"], "product_id": i["product_id"],
+                "product_name": i["name"], "type": "Keluar", "qty": i["qty"], "before": before,
+                "after": after, "note": f"Pesanan {order['order_number']}", "user_name": user.get("name", ""), "created_at": now_iso(),
+            })
+    total_cost = sum(i.get("cost", 0) * i["qty"] for i in order["items"])
+    count = await db.sales.count_documents({"tenant_id": user["tenant_id"]})
+    invoice = f"INV-{datetime.now().strftime('%y%m%d')}-{count + 1:04d}"
+    points = int(order["total"] // 1000)
+    if order.get("customer_id"):
+        await db.customers.update_one({"id": order["customer_id"]},
+                                      {"$inc": {"points": points, "total_spent": order["total"], "visits": 1}})
+    sale = {
+        "id": new_id(), "tenant_id": user["tenant_id"], "invoice": invoice,
+        "items": order["items"], "subtotal": order["subtotal"], "discount": order["discount"],
+        "tax_rate": order["tax_rate"], "tax": order["tax"], "total": order["total"],
+        "cost": total_cost, "profit": (order["subtotal"] - order["discount"]) - total_cost,
+        "payment_method": data.payment_method, "paid_amount": data.paid_amount + order["deposit_amount"],
+        "change": max(0, (data.paid_amount + order["deposit_amount"]) - order["total"]),
+        "customer_name": order["customer_name"], "customer_id": order.get("customer_id"),
+        "points_earned": points, "from_order": order["order_number"],
+        "cashier": user.get("name", ""), "cashier_id": user["id"], "created_at": now_iso(),
+    }
+    await db.sales.insert_one(sale)
+    await db.orders.update_one({"id": oid}, {"$set": {"status": "Selesai", "completed_at": now_iso(), "invoice": invoice}})
+    await log_activity(user["tenant_id"], user, "Pesanan Selesai", f"{order['order_number']} -> {invoice}")
+    return clean(sale)
+
+
+@api_router.delete("/orders/{oid}")
+async def delete_order(oid: str, user: dict = Depends(require_roles("Owner", "Manager"))):
+    await db.orders.delete_one({"id": oid, "tenant_id": user["tenant_id"]})
     return {"ok": True}
 
 

@@ -9,8 +9,11 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, Plus, Minus, Trash2, X, ArrowLeft, ShoppingCart, ScanLine, CheckCircle2 } from "lucide-react";
+import { Search, Plus, Minus, Trash2, X, ArrowLeft, ShoppingCart, ScanLine, CheckCircle2, PauseCircle, PlayCircle, HandCoins } from "lucide-react";
 
 const METHODS = ["Tunai", "Kartu", "QRIS", "E-Wallet"];
 
@@ -29,6 +32,11 @@ export default function POS() {
   const [paid, setPaid] = useState("");
   const [receipt, setReceipt] = useState(null);
   const [settings, setSettings] = useState({});
+  const [customers, setCustomers] = useState([]);
+  const [customerId, setCustomerId] = useState("");
+  const [held, setHeld] = useState([]);
+  const [depositOpen, setDepositOpen] = useState(false);
+  const [depositAmt, setDepositAmt] = useState("");
 
   const load = () => {
     api.get("/products").then((r) => setProducts(r.data));
@@ -37,8 +45,38 @@ export default function POS() {
       setSettings(r.data || {});
       setTaxRate(r.data?.tax_rate || 0);
     });
+    api.get("/customers").then((r) => setCustomers(r.data));
+    api.get("/held-orders").then((r) => setHeld(r.data));
   };
   useEffect(load, []);
+
+  const holdOrder = async () => {
+    if (cart.length === 0) return toast.error("Keranjang kosong");
+    const label = window.prompt("Label pesanan (mis. Meja 3):", `Meja ${held.length + 1}`);
+    if (!label) return;
+    await api.post("/held-orders", { label, items: cart, discount: Number(discount) || 0 });
+    setCart([]); setDiscount(0);
+    api.get("/held-orders").then((r) => setHeld(r.data));
+    toast.success("Pesanan ditahan");
+  };
+  const resumeOrder = async (h) => {
+    setCart(h.items); setDiscount(h.discount || 0);
+    await api.delete(`/held-orders/${h.id}`);
+    api.get("/held-orders").then((r) => setHeld(r.data));
+    toast.success(`Melanjutkan ${h.label}`);
+  };
+  const submitDeposit = async () => {
+    if (cart.length === 0) return toast.error("Keranjang kosong");
+    try {
+      await api.post("/orders", {
+        customer_id: customerId || null, items: cart,
+        discount: Number(discount) || 0, tax_rate: taxRate,
+        deposit_amount: Number(depositAmt) || 0, deposit_method: method,
+      });
+      toast.success("Pesanan + deposit tersimpan");
+      setDepositOpen(false); setDepositAmt(""); setCart([]); setDiscount(0); setCustomerId("");
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
 
   const filtered = useMemo(
     () =>
@@ -87,11 +125,13 @@ export default function POS() {
         tax_rate: taxRate,
         payment_method: method,
         paid_amount: method === "Tunai" ? Number(paid) : total,
+        customer_id: customerId || null,
       });
       setPayOpen(false);
       setCart([]);
       setDiscount(0);
       setPaid("");
+      setCustomerId("");
       load();
       toast.success("Transaksi berhasil");
       setTimeout(() => {
@@ -239,8 +279,27 @@ export default function POS() {
 
         {/* cart */}
         <div className="flex flex-col border-l border-border bg-card lg:col-span-4">
-          <div className="border-b border-border p-4">
-            <h3 className="font-display text-lg font-semibold">Keranjang</h3>
+          <div className="space-y-2 border-b border-border p-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-lg font-semibold">Keranjang</h3>
+              <Button variant="outline" size="sm" className="gap-1" onClick={holdOrder} data-testid="pos-hold-button"><PauseCircle className="h-4 w-4" /> Tahan</Button>
+            </div>
+            <Select value={customerId || "none"} onValueChange={(v) => setCustomerId(v === "none" ? "" : v)}>
+              <SelectTrigger className="h-9" data-testid="pos-customer-select"><SelectValue placeholder="Pilih pelanggan (opsional)" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Tanpa pelanggan</SelectItem>
+                {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} · {c.points || 0} poin</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {held.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {held.map((h) => (
+                  <button key={h.id} onClick={() => resumeOrder(h)} className="flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium hover:bg-accent" data-testid={`resume-${h.id}`}>
+                    <PlayCircle className="h-3.5 w-3.5" /> {h.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex-1 overflow-y-auto p-4">
             <AnimatePresence>
@@ -296,13 +355,15 @@ export default function POS() {
             <Button onClick={openPay} className="mt-4 h-14 w-full text-base font-bold" data-testid="pos-pay-button">
               Bayar
             </Button>
+            <Button onClick={() => { if (cart.length === 0) return toast.error("Keranjang kosong"); setDepositAmt(""); setDepositOpen(true); }} variant="outline" className="mt-2 h-11 w-full gap-2 font-semibold" data-testid="pos-deposit-button">
+              <HandCoins className="h-4 w-4" /> Pesanan + Deposit (DP)
+            </Button>
           </div>
         </div>
       </div>
 
       {/* payment dialog */}
-      <Dialog open={payOpen} onOpenChange={setPayOpen}>
-        <DialogContent data-testid="payment-dialog">
+      <Dialog open={payOpen} onOpenChange={setPayOpen}>        <DialogContent data-testid="payment-dialog">
           <DialogHeader>
             <DialogTitle className="font-display">Pembayaran — {rupiah(total)}</DialogTitle>
           </DialogHeader>
@@ -342,6 +403,30 @@ export default function POS() {
               Konfirmasi & Cetak Struk
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* deposit dialog */}
+      <Dialog open={depositOpen} onOpenChange={setDepositOpen}>
+        <DialogContent data-testid="deposit-dialog">
+          <DialogHeader><DialogTitle className="font-display">Pesanan Custom — Total {rupiah(total)}</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Simpan pesanan dengan uang muka. Sisa dilunasi saat pesanan selesai (menu Pesanan).</p>
+            <div>
+              <Label className="text-xs uppercase tracking-widest text-muted-foreground">Metode Deposit</Label>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {METHODS.map((m) => (
+                  <button key={m} onClick={() => setMethod(m)} className={`rounded-md border py-3 text-sm font-semibold transition-colors duration-200 ${method === m ? "border-primary bg-accent text-accent-foreground" : "border-border"}`} data-testid={`deposit-method-${m}`}>{m}</button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Nominal Deposit (DP)</Label>
+              <Input type="number" value={depositAmt} onChange={(e) => setDepositAmt(e.target.value)} className="h-12 text-lg" data-testid="deposit-amount-input" />
+              <p className="text-sm">Sisa tagihan: <span className="font-bold">{rupiah(Math.max(0, total - Number(depositAmt || 0)))}</span></p>
+            </div>
+          </div>
+          <DialogFooter><Button onClick={submitDeposit} className="h-12 w-full font-bold" data-testid="deposit-confirm-button">Simpan Pesanan</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 

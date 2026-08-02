@@ -150,7 +150,7 @@ export default function Products() {
               </Select>
             </div>
             <div className="space-y-1"><Label>Harga Jual</Label><Input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} data-testid="product-price-input" /></div>
-            <div className="space-y-1"><Label>Harga Modal</Label><Input type="number" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} /></div>
+            <div className="space-y-1"><Label>Harga Modal <span className="text-muted-foreground">(opsional)</span></Label><Input type="number" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} placeholder="Boleh dikosongkan" /></div>
             <div className="space-y-1"><Label>Stok</Label><Input type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} data-testid="product-stock-input" /></div>
             <div className="space-y-1"><Label>Min. Stok</Label><Input type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: e.target.value })} /></div>
             <div className="space-y-1"><Label>Satuan</Label><Input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} /></div>
