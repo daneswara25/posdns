@@ -88,13 +88,16 @@ export default function POS() {
         payment_method: method,
         paid_amount: method === "Tunai" ? Number(paid) : total,
       });
-      setReceipt(data);
       setPayOpen(false);
       setCart([]);
       setDiscount(0);
       setPaid("");
       load();
       toast.success("Transaksi berhasil");
+      setTimeout(() => {
+        document.body.style.pointerEvents = "";
+        setReceipt(data);
+      }, 300);
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail));
     }
@@ -343,7 +346,7 @@ export default function POS() {
       </Dialog>
 
       {/* receipt dialog */}
-      <Dialog open={!!receipt} onOpenChange={() => setReceipt(null)}>
+      <Dialog open={!!receipt} onOpenChange={(o) => { if (!o) { setReceipt(null); document.body.style.pointerEvents = ""; } }}>
         <DialogContent data-testid="receipt-dialog">
           {receipt && (
             <div>
@@ -370,7 +373,7 @@ export default function POS() {
               </div>
               <div className="mt-4 flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => printReceipt(receipt)} data-testid="receipt-print-button">Cetak</Button>
-                <Button className="flex-1" onClick={() => setReceipt(null)} data-testid="receipt-close-button">Transaksi Baru</Button>
+                <Button className="flex-1" onClick={() => { setReceipt(null); document.body.style.pointerEvents = ""; }} data-testid="receipt-close-button">Transaksi Baru</Button>
               </div>
             </div>
           )}
