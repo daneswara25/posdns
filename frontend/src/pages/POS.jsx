@@ -13,7 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, Plus, Minus, Trash2, X, ArrowLeft, ShoppingCart, ScanLine, CheckCircle2, PauseCircle, PlayCircle, HandCoins } from "lucide-react";
+import { Search, Plus, Minus, Trash2, X, ArrowLeft, ShoppingCart, ScanLine, CheckCircle2, PauseCircle, PlayCircle, HandCoins, Copy } from "lucide-react";
 
 const METHODS = ["Tunai", "Kartu", "QRIS", "E-Wallet"];
 
@@ -52,7 +52,7 @@ export default function POS() {
 
   const holdOrder = async () => {
     if (cart.length === 0) return toast.error("Keranjang kosong");
-    const label = window.prompt("Label pesanan (mis. Meja 3):", `Meja ${held.length + 1}`);
+    const label = window.prompt("Label pesanan (mis. Order Budi / Antrian 3):", `Order ${held.length + 1}`);
     if (!label) return;
     await api.post("/held-orders", { label, items: cart, discount: Number(discount) || 0 });
     setCart([]); setDiscount(0);
@@ -203,6 +203,44 @@ export default function POS() {
     };
   };
 
+  const copyBill = async (r) => {
+    const lines = [];
+    lines.push(`*${settings.business_name || "KasirCloud"}*`);
+    if (settings.address) lines.push(settings.address);
+    if (settings.phone) lines.push(`Telp: ${settings.phone}`);
+    lines.push("--------------------------------");
+    lines.push(`No   : ${r.invoice}`);
+    lines.push(`Tgl  : ${new Date(r.created_at).toLocaleString("id-ID")}`);
+    if (r.customer_name) lines.push(`Nama : ${r.customer_name}`);
+    lines.push("--------------------------------");
+    r.items.forEach((i) => {
+      lines.push(`${i.qty} x ${i.name}`);
+      lines.push(`     @${rupiah(i.price)}  =  ${rupiah(i.price * i.qty)}`);
+    });
+    lines.push("--------------------------------");
+    lines.push(`Subtotal : ${rupiah(r.subtotal)}`);
+    if (r.discount) lines.push(`Diskon   : -${rupiah(r.discount)}`);
+    if (r.tax) lines.push(`Pajak    : ${rupiah(r.tax)}`);
+    lines.push(`*TOTAL   : ${rupiah(r.total)}*`);
+    lines.push(`Bayar (${r.payment_method}) : ${rupiah(r.paid_amount)}`);
+    if (r.change) lines.push(`Kembali  : ${rupiah(r.change)}`);
+    lines.push("--------------------------------");
+    lines.push(settings.receipt_footer || "Terima kasih telah berbelanja!");
+    const text = lines.join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Struk disalin — tinggal tempel di WhatsApp pelanggan");
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      toast.success("Struk disalin");
+    }
+  };
+
   return (
     <div className="h-screen overflow-hidden bg-background">
       {/* top bar */}
@@ -288,7 +326,7 @@ export default function POS() {
               <SelectTrigger className="h-9" data-testid="pos-customer-select"><SelectValue placeholder="Pilih pelanggan (opsional)" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Tanpa pelanggan</SelectItem>
-                {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} · {c.points || 0} poin</SelectItem>)}
+                {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}{c.phone ? ` · ${c.phone}` : ""}</SelectItem>)}
               </SelectContent>
             </Select>
             {held.length > 0 && (
@@ -456,9 +494,14 @@ export default function POS() {
                 <div className="flex justify-between"><span>{receipt.payment_method}</span><span>{rupiah(receipt.paid_amount)}</span></div>
                 <div className="flex justify-between"><span>Kembalian</span><span>{rupiah(receipt.change)}</span></div>
               </div>
-              <div className="mt-4 flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => printReceipt(receipt)} data-testid="receipt-print-button">Cetak</Button>
-                <Button className="flex-1" onClick={() => { setReceipt(null); document.body.style.pointerEvents = ""; }} data-testid="receipt-close-button">Transaksi Baru</Button>
+              <div className="mt-4 space-y-2">
+                <Button variant="secondary" className="w-full gap-2" onClick={() => copyBill(receipt)} data-testid="receipt-copy-button">
+                  <Copy className="h-4 w-4" /> Salin Struk untuk WhatsApp
+                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={() => printReceipt(receipt)} data-testid="receipt-print-button">Cetak</Button>
+                  <Button className="flex-1" onClick={() => { setReceipt(null); document.body.style.pointerEvents = ""; }} data-testid="receipt-close-button">Transaksi Baru</Button>
+                </div>
               </div>
             </div>
           )}

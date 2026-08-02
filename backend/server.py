@@ -404,8 +404,6 @@ async def create_sale(data: SaleInput, user: dict = Depends(get_current_user)):
             })
     count = await db.sales.count_documents({"tenant_id": user["tenant_id"]})
     invoice = f"INV-{datetime.now().strftime('%y%m%d')}-{count + 1:04d}"
-    # loyalty points: 1 poin per Rp1.000
-    points = int(total // 1000)
     cust_name = data.customer_name
     if data.customer_id:
         cust = await db.customers.find_one({"id": data.customer_id, "tenant_id": user["tenant_id"]})
@@ -413,7 +411,7 @@ async def create_sale(data: SaleInput, user: dict = Depends(get_current_user)):
             cust_name = cust["name"]
             await db.customers.update_one(
                 {"id": data.customer_id},
-                {"$inc": {"points": points, "total_spent": total, "visits": 1}},
+                {"$inc": {"total_spent": total, "visits": 1}},
             )
     doc = {
         "id": new_id(), "tenant_id": user["tenant_id"], "invoice": invoice,
@@ -422,7 +420,7 @@ async def create_sale(data: SaleInput, user: dict = Depends(get_current_user)):
         "total": total, "cost": total_cost, "profit": (subtotal - data.discount) - total_cost,
         "payment_method": data.payment_method, "paid_amount": data.paid_amount,
         "change": max(0, data.paid_amount - total), "customer_name": cust_name,
-        "customer_id": data.customer_id, "points_earned": points,
+        "customer_id": data.customer_id,
         "cashier": user.get("name", ""), "cashier_id": user["id"], "created_at": now_iso(),
     }
     await db.sales.insert_one(doc)
@@ -531,7 +529,7 @@ async def list_customers(user: dict = Depends(get_current_user)):
 @api_router.post("/customers")
 async def create_customer(data: CustomerInput, user: dict = Depends(get_current_user)):
     doc = {"id": new_id(), "tenant_id": user["tenant_id"], **data.model_dump(),
-           "points": 0, "total_spent": 0, "visits": 0, "created_at": now_iso()}
+           "total_spent": 0, "visits": 0, "created_at": now_iso()}
     await db.customers.insert_one(doc)
     return clean(doc)
 
@@ -703,10 +701,9 @@ async def complete_order(oid: str, data: SettleOrderInput, user: dict = Depends(
     total_cost = sum(i.get("cost", 0) * i["qty"] for i in order["items"])
     count = await db.sales.count_documents({"tenant_id": user["tenant_id"]})
     invoice = f"INV-{datetime.now().strftime('%y%m%d')}-{count + 1:04d}"
-    points = int(order["total"] // 1000)
     if order.get("customer_id"):
         await db.customers.update_one({"id": order["customer_id"]},
-                                      {"$inc": {"points": points, "total_spent": order["total"], "visits": 1}})
+                                      {"$inc": {"total_spent": order["total"], "visits": 1}})
     sale = {
         "id": new_id(), "tenant_id": user["tenant_id"], "invoice": invoice,
         "items": order["items"], "subtotal": order["subtotal"], "discount": order["discount"],
@@ -715,7 +712,7 @@ async def complete_order(oid: str, data: SettleOrderInput, user: dict = Depends(
         "payment_method": data.payment_method, "paid_amount": data.paid_amount + order["deposit_amount"],
         "change": max(0, (data.paid_amount + order["deposit_amount"]) - order["total"]),
         "customer_name": order["customer_name"], "customer_id": order.get("customer_id"),
-        "points_earned": points, "from_order": order["order_number"],
+        "from_order": order["order_number"],
         "cashier": user.get("name", ""), "cashier_id": user["id"], "created_at": now_iso(),
     }
     await db.sales.insert_one(sale)

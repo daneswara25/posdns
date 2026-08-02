@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Star, History, User } from "lucide-react";
+import { Plus, Pencil, Trash2, History, User } from "lucide-react";
 
 const EMPTY = { name: "", phone: "", email: "", address: "" };
 
@@ -38,7 +38,7 @@ export default function Customers() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Membership</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Data Pelanggan</p>
           <h1 className="font-display text-3xl font-bold tracking-tight">Pelanggan</h1>
         </div>
         <Button onClick={() => { setForm(EMPTY); setEditId(null); setOpen(true); }} className="gap-2" data-testid="add-customer-button"><Plus className="h-4 w-4" /> Tambah</Button>
@@ -62,8 +62,8 @@ export default function Customers() {
               </div>
             </div>
             <div className="mt-3 flex items-center justify-between rounded-md bg-secondary px-3 py-2 text-sm">
-              <span className="flex items-center gap-1 font-semibold text-amber-600"><Star className="h-4 w-4 fill-amber-500 text-amber-500" /> {c.points || 0} poin</span>
-              <span className="text-muted-foreground">{rupiah(c.total_spent || 0)} · {c.visits || 0}x</span>
+              <span className="font-semibold">{rupiah(c.total_spent || 0)}</span>
+              <span className="text-muted-foreground">{c.visits || 0}x transaksi</span>
             </div>
           </div>
         ))}
