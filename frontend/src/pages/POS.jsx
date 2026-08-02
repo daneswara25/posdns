@@ -105,10 +105,11 @@ export default function POS() {
     const items = r.items
       .map((i) => line(`${i.qty}x ${i.name}`, rupiah(i.price * i.qty)))
       .join("");
-    const html = `<!DOCTYPE html><html><head><title>${r.invoice}</title>
+    const html = `<html><head><title>${r.invoice}</title>
 <style>
-  * { font-family: 'Courier New', monospace; font-size: 12px; }
-  body { width: 280px; margin: 0 auto; padding: 8px; color: #000; }
+  @page { size: 80mm auto; margin: 4mm; }
+  * { font-family: 'Courier New', monospace; font-size: 12px; box-sizing: border-box; }
+  body { margin: 0; color: #000; }
   h2 { text-align: center; font-size: 14px; margin: 4px 0; }
   p.sub { text-align: center; margin: 0; font-size: 11px; }
   .divider { border-top: 1px dashed #000; margin: 6px 0; }
@@ -135,18 +136,28 @@ export default function POS() {
   <div class="divider"></div>
   <p class="center">${settings.receipt_footer || "Terima kasih telah berbelanja!"}</p>
 </body></html>`;
-    const w = window.open("", "PRINT", "width=320,height=600");
-    if (!w) {
-      toast.error("Popup diblokir browser. Izinkan popup untuk mencetak.");
-      return;
-    }
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    setTimeout(() => {
-      w.print();
-      w.close();
-    }, 300);
+
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    document.body.appendChild(iframe);
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(html);
+    doc.close();
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } catch (e) {
+        toast.error("Gagal mencetak struk");
+      }
+      setTimeout(() => document.body.removeChild(iframe), 1000);
+    };
   };
 
   return (
