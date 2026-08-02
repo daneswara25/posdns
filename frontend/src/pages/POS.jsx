@@ -28,11 +28,15 @@ export default function POS() {
   const [method, setMethod] = useState("Tunai");
   const [paid, setPaid] = useState("");
   const [receipt, setReceipt] = useState(null);
+  const [settings, setSettings] = useState({});
 
   const load = () => {
     api.get("/products").then((r) => setProducts(r.data));
     api.get("/categories").then((r) => setCategories(r.data));
-    api.get("/settings").then((r) => setTaxRate(r.data?.tax_rate || 0));
+    api.get("/settings").then((r) => {
+      setSettings(r.data || {});
+      setTaxRate(r.data?.tax_rate || 0);
+    });
   };
   useEffect(load, []);
 
@@ -94,6 +98,55 @@ export default function POS() {
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail));
     }
+  };
+
+  const printReceipt = (r) => {
+    const line = (l, rr) => `<div class="row"><span>${l}</span><span>${rr}</span></div>`;
+    const items = r.items
+      .map((i) => line(`${i.qty}x ${i.name}`, rupiah(i.price * i.qty)))
+      .join("");
+    const html = `<!DOCTYPE html><html><head><title>${r.invoice}</title>
+<style>
+  * { font-family: 'Courier New', monospace; font-size: 12px; }
+  body { width: 280px; margin: 0 auto; padding: 8px; color: #000; }
+  h2 { text-align: center; font-size: 14px; margin: 4px 0; }
+  p.sub { text-align: center; margin: 0; font-size: 11px; }
+  .divider { border-top: 1px dashed #000; margin: 6px 0; }
+  .row { display: flex; justify-content: space-between; margin: 2px 0; }
+  .bold { font-weight: bold; }
+  .center { text-align: center; }
+</style></head><body>
+  <h2>${settings.business_name || "KasirCloud"}</h2>
+  ${settings.address ? `<p class="sub">${settings.address}</p>` : ""}
+  ${settings.phone ? `<p class="sub">${settings.phone}</p>` : ""}
+  <div class="divider"></div>
+  <div class="row"><span>${r.invoice}</span></div>
+  <div class="row"><span>${new Date(r.created_at).toLocaleString("id-ID")}</span></div>
+  <div class="row"><span>Kasir: ${r.cashier || ""}</span></div>
+  <div class="divider"></div>
+  ${items}
+  <div class="divider"></div>
+  ${line("Subtotal", rupiah(r.subtotal))}
+  ${line("Diskon", "-" + rupiah(r.discount))}
+  ${line(`Pajak (${r.tax_rate}%)`, rupiah(r.tax))}
+  <div class="row bold"><span>TOTAL</span><span>${rupiah(r.total)}</span></div>
+  ${line(r.payment_method, rupiah(r.paid_amount))}
+  ${line("Kembalian", rupiah(r.change))}
+  <div class="divider"></div>
+  <p class="center">${settings.receipt_footer || "Terima kasih telah berbelanja!"}</p>
+</body></html>`;
+    const w = window.open("", "PRINT", "width=320,height=600");
+    if (!w) {
+      toast.error("Popup diblokir browser. Izinkan popup untuk mencetak.");
+      return;
+    }
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => {
+      w.print();
+      w.close();
+    }, 300);
   };
 
   return (
@@ -305,7 +358,7 @@ export default function POS() {
                 <div className="flex justify-between"><span>Kembalian</span><span>{rupiah(receipt.change)}</span></div>
               </div>
               <div className="mt-4 flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => window.print()} data-testid="receipt-print-button">Cetak</Button>
+                <Button variant="outline" className="flex-1" onClick={() => printReceipt(receipt)} data-testid="receipt-print-button">Cetak</Button>
                 <Button className="flex-1" onClick={() => setReceipt(null)} data-testid="receipt-close-button">Transaksi Baru</Button>
               </div>
             </div>
