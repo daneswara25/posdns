@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Masuk — KasirCloud POS</title>
+  <!--
+    ============================================================
+    HALAMAN LOGIN MANDIRI (posdns.html)
+    Simpan file ini di domain pribadi Anda. Saat username & password
+    diisi lalu klik "Masuk", halaman ini akan login ke sistem POS dan
+    otomatis membuka aplikasi dalam keadaan sudah masuk.
+
+    >>> PENTING: Setelah aplikasi Anda di-deploy, ganti nilai
+        SYSTEM_URL di bawah dengan URL sistem POS Anda (tanpa "/" di akhir).
+    ============================================================
+  -->
+  <style>
+    :root {
+      --blue: #2563eb;
+      --blue-dark: #1d4ed8;
+      --bg: #0b1220;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      color: var(--text);
+      background: #f8fafc;
+    }
+    .hero {
+      position: relative;
+      background: linear-gradient(135deg, #0b1220 0%, #14203a 60%, #1e3a8a 100%);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 56px;
+      overflow: hidden;
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(600px 300px at 20% 10%, rgba(37,99,235,.35), transparent 70%),
+        radial-gradient(500px 300px at 90% 90%, rgba(124,58,237,.25), transparent 70%);
+    }
+    .hero .logo {
+      position: absolute; top: 40px; left: 56px;
+      display: flex; align-items: center; gap: 12px;
+      font-weight: 800; font-size: 20px; letter-spacing: .5px;
+    }
+    .hero .logo .mark {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: var(--blue); display: grid; place-items: center;
+      font-size: 20px;
+    }
+    .hero h1 { position: relative; font-size: 44px; line-height: 1.05; font-weight: 800; letter-spacing: -1px; }
+    .hero p { position: relative; margin-top: 16px; max-width: 420px; color: #cbd5e1; font-size: 16px; line-height: 1.6; }
+
+    .panel {
+      display: flex; align-items: center; justify-content: center; padding: 40px;
+    }
+    .box { width: 100%; max-width: 380px; }
+    .eyebrow { text-transform: uppercase; letter-spacing: .25em; font-size: 11px; color: var(--muted); font-weight: 700; }
+    .box h2 { font-size: 30px; font-weight: 800; letter-spacing: -.5px; margin-top: 8px; }
+    .box .sub { color: var(--muted); margin-top: 8px; font-size: 14px; }
+    form { margin-top: 28px; }
+    label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .field { margin-bottom: 18px; }
+    input {
+      width: 100%; height: 46px; padding: 0 14px; font-size: 15px;
+      border: 1px solid var(--border); border-radius: 10px; background: #fff;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+    button {
+      width: 100%; height: 48px; border: none; border-radius: 10px; cursor: pointer;
+      background: var(--blue); color: #fff; font-size: 15px; font-weight: 700;
+      transition: background .15s, transform .05s;
+    }
+    button:hover { background: var(--blue-dark); }
+    button:active { transform: translateY(1px); }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    .msg { margin-top: 16px; font-size: 14px; padding: 12px 14px; border-radius: 10px; display: none; }
+    .msg.error { display: block; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .msg.info { display: block; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .foot { margin-top: 24px; font-size: 12px; color: var(--muted); text-align: center; }
+    @media (max-width: 860px) {
+      body { grid-template-columns: 1fr; }
+      .hero { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <div class="logo"><span class="mark">🛍️</span> KasirCloud</div>
+    <h1>Point of Sale berbasis Cloud</h1>
+    <p>Kelola penjualan, stok, dan laporan bisnis Anda secara real-time dari mana saja.</p>
+  </div>
+
+  <div class="panel">
+    <div class="box">
+      <p class="eyebrow">Masuk</p>
+      <h2>Selamat datang kembali</h2>
+      <p class="sub">Masukkan kredensial akun Anda untuk melanjutkan.</p>
+
+      <form id="loginForm">
+        <div class="field">
+          <label for="username">Username</label>
+          <input id="username" name="username" type="text" autocomplete="username" placeholder="Masukkan username" required />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Masukkan password" required />
+        </div>
+        <button id="submitBtn" type="submit">Masuk</button>
+        <div id="msg" class="msg"></div>
+      </form>
+
+      <p class="foot">Terhubung aman ke sistem KasirCloud POS</p>
+    </div>
+  </div>
+
+  <script>
+    // ============================================================
+    // GANTI URL INI dengan URL sistem POS Anda setelah deploy.
+    // Contoh production: "https://pos.domainanda.com"
+    // (jangan pakai garis miring "/" di akhir)
+    // ============================================================
+    var SYSTEM_URL = "https://pos-retail-platform.preview.emergentagent.com";
+
+    var form = document.getElementById("loginForm");
+    var btn = document.getElementById("submitBtn");
+    var msg = document.getElementById("msg");
+
+    function showMsg(text, type) {
+      msg.textContent = text;
+      msg.className = "msg " + type;
+    }
+
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var username = document.getElementById("username").value.trim();
+      var password = document.getElementById("password").value;
+      if (!username || !password) return;
+
+      btn.disabled = true;
+      btn.textContent = "Memproses...";
+      showMsg("Menghubungkan ke sistem...", "info");
+
+      try {
+        var res = await fetch(SYSTEM_URL + "/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: username, password: password })
+        });
+        var data = await res.json();
+        if (!res.ok) {
+          var detail = data && data.detail ? (typeof data.detail === "string" ? data.detail : "Login gagal") : "Username atau password salah";
+          throw new Error(detail);
+        }
+        showMsg("Berhasil! Membuka aplikasi...", "info");
+        // Kirim token ke aplikasi; aplikasi akan otomatis login.
+        window.location.href = SYSTEM_URL + "/?token=" + encodeURIComponent(data.token);
+      } catch (err) {
+        showMsg(err.message || "Terjadi kesalahan. Coba lagi.", "error");
+        btn.disabled = false;
+        btn.textContent = "Masuk";
+      }
+    });
+  </script>
+</body>
+</html>

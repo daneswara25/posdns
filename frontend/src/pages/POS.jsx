@@ -31,6 +31,7 @@ export default function POS() {
   const [method, setMethod] = useState("Tunai");
   const [paid, setPaid] = useState("");
   const [receipt, setReceipt] = useState(null);
+  const [waPhone, setWaPhone] = useState("");
   const [settings, setSettings] = useState({});
   const [customers, setCustomers] = useState([]);
   const [customerId, setCustomerId] = useState("");
@@ -137,6 +138,7 @@ export default function POS() {
       setTimeout(() => {
         document.body.style.pointerEvents = "";
         setReceipt(data);
+        setWaPhone(data.customer_phone || "");
       }, 300);
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail));
@@ -240,12 +242,12 @@ export default function POS() {
 
   const sendWhatsApp = (r) => {
     const text = buildBillText(r);
-    const phone = normalizePhone(r.customer_phone);
+    const phone = normalizePhone(waPhone);
     const url = phone
       ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
       : `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank");
-    if (!phone) toast.info("Nomor pelanggan tidak ada — pilih kontak tujuan di WhatsApp");
+    if (!phone) toast.info("Nomor tujuan kosong — pilih kontak di WhatsApp");
   };
 
   const copyBill = async (r) => {
@@ -518,6 +520,16 @@ export default function POS() {
                 <div className="flex justify-between"><span>Kembalian</span><span>{rupiah(receipt.change)}</span></div>
               </div>
               <div className="mt-4 space-y-2">
+                <div className="space-y-1 text-left">
+                  <label className="text-xs text-muted-foreground">Nomor WhatsApp pelanggan</label>
+                  <Input
+                    value={waPhone}
+                    onChange={(e) => setWaPhone(e.target.value)}
+                    placeholder="cth: 08123456789"
+                    inputMode="tel"
+                    data-testid="receipt-wa-phone-input"
+                  />
+                </div>
                 <Button className="w-full gap-2 bg-[#25D366] text-white hover:bg-[#1ebe5b]" onClick={() => sendWhatsApp(receipt)} data-testid="receipt-whatsapp-button">
                   <MessageCircle className="h-4 w-4" /> Kirim Struk via WhatsApp
                 </Button>

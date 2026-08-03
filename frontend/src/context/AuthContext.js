@@ -8,6 +8,15 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Accept token passed from an external login page (e.g. posdns.html on a private domain)
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get("token");
+    if (urlToken) {
+      localStorage.setItem("pos_token", urlToken);
+      params.delete("token");
+      const clean = window.location.pathname + (params.toString() ? `?${params}` : "") + window.location.hash;
+      window.history.replaceState({}, "", clean);
+    }
     const token = localStorage.getItem("pos_token");
     if (!token) {
       setUser(false);
