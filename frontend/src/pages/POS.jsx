@@ -13,7 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, Plus, Minus, Trash2, X, ArrowLeft, ShoppingCart, ScanLine, CheckCircle2, PauseCircle, PlayCircle, HandCoins, Copy, MessageCircle } from "lucide-react";
+import { Search, Plus, Minus, Trash2, X, ArrowLeft, ShoppingCart, ScanLine, CheckCircle2, PauseCircle, PlayCircle, HandCoins, Copy, MessageCircle, UserPlus } from "lucide-react";
 
 const METHODS = ["Tunai", "Kartu", "QRIS", "E-Wallet"];
 
@@ -248,6 +248,19 @@ export default function POS() {
       : `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank");
     if (!phone) toast.info("Nomor tujuan kosong — pilih kontak di WhatsApp");
+  };
+
+  const saveWaCustomer = async () => {
+    if (!waPhone.trim()) return toast.error("Isi nomor WhatsApp dulu");
+    const name = window.prompt("Nama pelanggan baru:", receipt?.customer_name || "");
+    if (!name || !name.trim()) return;
+    try {
+      await api.post("/customers", { name: name.trim(), phone: waPhone.trim() });
+      toast.success("Pelanggan baru tersimpan");
+      api.get("/customers").then((r) => setCustomers(r.data));
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail));
+    }
   };
 
   const copyBill = async (r) => {
@@ -529,6 +542,16 @@ export default function POS() {
                     inputMode="tel"
                     data-testid="receipt-wa-phone-input"
                   />
+                  {waPhone.trim() && !receipt.customer_id && (
+                    <button
+                      type="button"
+                      onClick={saveWaCustomer}
+                      className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                      data-testid="receipt-save-customer-button"
+                    >
+                      <UserPlus className="h-3.5 w-3.5" /> Simpan sebagai pelanggan baru
+                    </button>
+                  )}
                 </div>
                 <Button className="w-full gap-2 bg-[#25D366] text-white hover:bg-[#1ebe5b]" onClick={() => sendWhatsApp(receipt)} data-testid="receipt-whatsapp-button">
                   <MessageCircle className="h-4 w-4" /> Kirim Struk via WhatsApp

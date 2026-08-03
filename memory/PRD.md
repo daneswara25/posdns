@@ -46,6 +46,9 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - ADDED: Halaman login mandiri `frontend/public/posdns.html` (self-contained, untuk di-host di domain pribadi user). Login → panggil `/api/auth/login` → redirect ke `SYSTEM_URL/?token=` → aplikasi auto-login. AuthContext.js membaca `?token=` dari URL, simpan ke localStorage, bersihkan URL. Tested E2E: login dari posdns.html → Dashboard terbuka otomatis. ✓
   - CATATAN DEPLOY: ganti konstanta `SYSTEM_URL` di posdns.html dengan URL produksi setelah deploy.
 
+## Update (2026-06-03) — Bagian 4
+- ADDED: Simpan Nomor Cepat (POS.jsx). Saat nomor WA diketik manual di struk untuk pelanggan non-tersimpan, muncul link "Simpan sebagai pelanggan baru" → prompt nama → POST /customers (nama + nomor). Daftar pelanggan langsung refresh. Tested E2E: pelanggan tersimpan dengan nomor benar. ✓
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
