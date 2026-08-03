@@ -60,6 +60,10 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - ADDED: Pencarian pelanggan (Customers.jsx). Kolom cari nama/telepon (`customer-search`), label jumlah hasil (`customer-count`), tampil maks 200 kartu (persempit pencarian jika lebih). Tested E2E: cari "GITA" → 2 hasil. ✓
 - ADDED: Auto-import 648 pelanggan ke PRODUKSI. Data dibundel di `backend/seed_customers.json` (648 rows). Startup backend meng-import otomatis JIKA koleksi customers kosong untuk tenant → produksi (DB Atlas fresh) akan terisi otomatis setelah deploy ulang. Verified lokal: hapus semua → restart → ter-seed 648. Import via CLI: `python scripts/import_customers.py` (replace-all, opsional).
 
+## Update (2026-06-04) — Bagian 3
+- ADDED: Reprint Nota di menu Pesanan (Orders.jsx). Tiap kartu pesanan punya tombol "Cetak Nota" (`reprint-order-*`) → cetak ulang nota thermal (iframe, 80mm) berisi item, subtotal, deposit, sisa/lunas, status. Ambil settings toko untuk header/footer. Tested E2E: 5 tombol muncul, klik tanpa error.
+- ADDED: Pencarian pelanggan di POS (POS.jsx). Select dropdown 648 pelanggan diganti combobox (Popover + Command) dengan kolom cari nama/nomor (`pos-customer-search`). Tested E2E: cari "GITA" → hasil terfilter, pilih → trigger update, tanpa pointer-events lock.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.

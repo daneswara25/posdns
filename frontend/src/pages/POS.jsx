@@ -12,8 +12,10 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
 import { toast } from "sonner";
-import { Search, Plus, Minus, Trash2, X, ArrowLeft, ShoppingCart, ScanLine, CheckCircle2, PauseCircle, PlayCircle, HandCoins, Copy, MessageCircle, UserPlus } from "lucide-react";
+import { Search, Plus, Minus, Trash2, X, ArrowLeft, ShoppingCart, ScanLine, CheckCircle2, PauseCircle, PlayCircle, HandCoins, Copy, MessageCircle, UserPlus, Check, ChevronsUpDown } from "lucide-react";
 
 const METHODS = ["Tunai", "Kartu", "QRIS", "E-Wallet"];
 
@@ -25,6 +27,7 @@ export default function POS() {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
   const [variantCat, setVariantCat] = useState(null);
+  const [custOpen, setCustOpen] = useState(false);
   const [cart, setCart] = useState([]);
   const [discount, setDiscount] = useState(0);
   const [taxRate, setTaxRate] = useState(0);
@@ -406,13 +409,43 @@ export default function POS() {
               <h3 className="font-display text-lg font-semibold">Keranjang</h3>
               <Button variant="outline" size="sm" className="gap-1" onClick={holdOrder} data-testid="pos-hold-button"><PauseCircle className="h-4 w-4" /> Tahan</Button>
             </div>
-            <Select value={customerId || "none"} onValueChange={(v) => setCustomerId(v === "none" ? "" : v)}>
-              <SelectTrigger className="h-9" data-testid="pos-customer-select"><SelectValue placeholder="Pilih pelanggan (opsional)" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Tanpa pelanggan</SelectItem>
-                {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}{c.phone ? ` · ${c.phone}` : ""}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Popover open={custOpen} onOpenChange={setCustOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" className="h-9 w-full justify-between font-normal" data-testid="pos-customer-select">
+                  <span className="truncate">
+                    {customerId ? (customers.find((c) => c.id === customerId)?.name || "Pelanggan") : "Pilih pelanggan (opsional)"}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Cari nama / nomor..." data-testid="pos-customer-search" />
+                  <CommandList>
+                    <CommandEmpty>Pelanggan tidak ditemukan.</CommandEmpty>
+                    <CommandItem
+                      value="tanpa pelanggan"
+                      onSelect={() => { setCustomerId(""); setCustOpen(false); }}
+                      data-testid="pos-customer-none"
+                    >
+                      <Check className={`mr-2 h-4 w-4 ${!customerId ? "opacity-100" : "opacity-0"}`} />
+                      Tanpa pelanggan
+                    </CommandItem>
+                    {customers.map((c) => (
+                      <CommandItem
+                        key={c.id}
+                        value={`${c.name} ${c.phone || ""}`}
+                        onSelect={() => { setCustomerId(c.id); setCustOpen(false); }}
+                        data-testid={`pos-customer-option-${c.id}`}
+                      >
+                        <Check className={`mr-2 h-4 w-4 ${customerId === c.id ? "opacity-100" : "opacity-0"}`} />
+                        <span className="truncate">{c.name}{c.phone ? ` · ${c.phone}` : ""}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
             {held.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {held.map((h) => (
