@@ -129,8 +129,8 @@ export default function Products() {
         </table>
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto" data-testid="product-dialog">
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setTimeout(() => { document.body.style.pointerEvents = ""; }, 100); }}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto" onCloseAutoFocus={() => { document.body.style.pointerEvents = ""; }} data-testid="product-dialog">
           <DialogHeader><DialogTitle className="font-display">{editId ? "Edit Produk" : "Tambah Produk"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2 space-y-1">
