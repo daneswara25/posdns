@@ -24,6 +24,7 @@ export default function POS() {
   const [categories, setCategories] = useState([]);
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
+  const [variantCat, setVariantCat] = useState(null);
   const [cart, setCart] = useState([]);
   const [discount, setDiscount] = useState(0);
   const [taxRate, setTaxRate] = useState(0);
@@ -79,20 +80,51 @@ export default function POS() {
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
 
+  const searching = q.trim().length > 0;
   const filtered = useMemo(
     () =>
       products.filter(
         (p) =>
           p.active !== false &&
-          (cat === "all" || p.category_id === cat) &&
           (p.name.toLowerCase().includes(q.toLowerCase()) ||
             (p.barcode || "").includes(q) ||
             (p.sku || "").toLowerCase().includes(q.toLowerCase()))
       ),
-    [products, q, cat]
+    [products, q]
   );
 
+  // Group products by category to show category tiles (main products) with variants
+  const productsByCat = useMemo(() => {
+    const m = {};
+    products.forEach((p) => {
+      if (p.active === false) return;
+      const k = p.category_id || "none";
+      (m[k] = m[k] || []).push(p);
+    });
+    return m;
+  }, [products]);
+
+  const catTiles = useMemo(() => {
+    const list = categories
+      .filter((c) => (productsByCat[c.id] || []).length > 0)
+      .map((c) => ({ ...c, items: productsByCat[c.id] }));
+    if ((productsByCat["none"] || []).length > 0) {
+      list.push({ id: "none", name: "Tanpa Kategori", items: productsByCat["none"] });
+    }
+    return list;
+  }, [categories, productsByCat]);
+
+  const tileThumb = (tile) =>
+    tile.image || tile.items.find((p) => p.image)?.image || null;
+
+  const stripVariant = (name, catName) => {
+    if (!catName) return name;
+    const pref = `${catName} - `;
+    return name.startsWith(pref) ? name.slice(pref.length) : name;
+  };
+
   const addToCart = (p) => {
+    if (p.stock <= 0) return toast.error("Stok habis");
     setCart((c) => {
       const ex = c.find((x) => x.product_id === p.id);
       if (ex) return c.map((x) => (x.product_id === p.id ? { ...x, qty: x.qty + 1 } : x));
@@ -306,50 +338,64 @@ export default function POS() {
                 data-testid="pos-search-input"
               />
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                onClick={() => setCat("all")}
-                className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors duration-200 ${cat === "all" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
-                data-testid="pos-category-all"
-              >
-                Semua
-              </button>
-              {categories.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setCat(c.id)}
-                  className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors duration-200 ${cat === c.id ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
-                >
-                  {c.name}
-                </button>
-              ))}
-            </div>
           </div>
           <div className="flex-1 overflow-y-auto p-4">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-              {filtered.map((p) => (
-                <motion.button
-                  key={p.id}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => addToCart(p)}
-                  disabled={p.stock <= 0}
-                  data-testid={`pos-product-${p.id}`}
-                  className="flex flex-col rounded-lg border border-border bg-card p-3 text-left transition-colors duration-200 hover:border-primary disabled:opacity-40"
-                >
-                  <div className="mb-2 flex h-20 items-center justify-center rounded-md bg-secondary">
-                    {p.image ? (
-                      <img src={p.image} alt={p.name} className="h-full w-full rounded-md object-cover" />
-                    ) : (
-                      <ShoppingCart className="h-6 w-6 text-muted-foreground" />
-                    )}
-                  </div>
-                  <p className="line-clamp-2 text-sm font-medium">{p.name}</p>
-                  <p className="mt-1 font-display font-bold text-primary">{rupiah(p.price)}</p>
-                  <p className="text-xs text-muted-foreground">Stok: {p.stock}</p>
-                </motion.button>
-              ))}
-              {filtered.length === 0 && <p className="col-span-full text-sm text-muted-foreground">Tidak ada produk.</p>}
-            </div>
+            {searching ? (
+              /* Direct product search results (barcode / name) */
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                {filtered.map((p) => (
+                  <motion.button
+                    key={p.id}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={() => addToCart(p)}
+                    disabled={p.stock <= 0}
+                    data-testid={`pos-product-${p.id}`}
+                    className="flex flex-col rounded-lg border border-border bg-card p-3 text-left transition-colors duration-200 hover:border-primary disabled:opacity-40"
+                  >
+                    <div className="mb-2 aspect-square overflow-hidden rounded-md bg-secondary flex items-center justify-center">
+                      {p.image ? (
+                        <img src={p.image} alt={p.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <ShoppingCart className="h-6 w-6 text-muted-foreground" />
+                      )}
+                    </div>
+                    <p className="line-clamp-2 text-sm font-medium">{p.name}</p>
+                    <p className="mt-1 font-display font-bold text-primary">{rupiah(p.price)}</p>
+                    <p className="text-xs text-muted-foreground">Stok: {p.stock}</p>
+                  </motion.button>
+                ))}
+                {filtered.length === 0 && <p className="col-span-full text-sm text-muted-foreground">Tidak ada produk.</p>}
+              </div>
+            ) : (
+              /* Category tiles (main products) — variants shown after tapping */
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                {catTiles.map((tile) => {
+                  const thumb = tileThumb(tile);
+                  return (
+                    <motion.button
+                      key={tile.id}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => setVariantCat(tile)}
+                      data-testid={`pos-cat-tile-${tile.id}`}
+                      className="group relative flex aspect-square flex-col overflow-hidden rounded-lg border border-border bg-card text-left transition-colors duration-200 hover:border-primary"
+                    >
+                      <div className="absolute inset-0 flex items-center justify-center bg-secondary">
+                        {thumb ? (
+                          <img src={thumb} alt={tile.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="font-display text-3xl font-bold text-muted-foreground">{tile.name.charAt(0)}</span>
+                        )}
+                      </div>
+                      <div className="absolute inset-x-0 bottom-0 bg-black/55 px-2 py-1.5 backdrop-blur-sm">
+                        <p className="line-clamp-2 text-center text-xs font-semibold text-white">{tile.name}</p>
+                      </div>
+                      <span className="absolute right-1.5 top-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">{tile.items.length}</span>
+                    </motion.button>
+                  );
+                })}
+                {catTiles.length === 0 && <p className="col-span-full text-sm text-muted-foreground">Belum ada produk.</p>}
+              </div>
+            )}
           </div>
         </div>
 
@@ -437,6 +483,47 @@ export default function POS() {
           </div>
         </div>
       </div>
+
+      {/* variant picker dialog */}
+      <Dialog open={!!variantCat} onOpenChange={(o) => { if (!o) { setVariantCat(null); setTimeout(() => { document.body.style.pointerEvents = ""; }, 100); } }}>
+        <DialogContent className="max-h-[85vh] overflow-hidden p-0 sm:max-w-lg" onCloseAutoFocus={() => { document.body.style.pointerEvents = ""; }} data-testid="variant-dialog">
+          <DialogHeader className="border-b border-border px-5 pb-3 pt-5">
+            <DialogTitle className="font-display">{variantCat?.name}</DialogTitle>
+            <p className="text-xs text-muted-foreground">Pilih varian untuk ditambahkan ke keranjang</p>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto px-5 pb-5">
+            <div className="space-y-2">
+              {variantCat?.items.map((p) => {
+                const inCart = cart.find((x) => x.product_id === p.id);
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => addToCart(p)}
+                    disabled={p.stock <= 0}
+                    data-testid={`variant-item-${p.id}`}
+                    className="flex w-full items-center gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:border-primary disabled:opacity-40"
+                  >
+                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-secondary flex items-center justify-center">
+                      {p.image ? <img src={p.image} alt="" className="h-full w-full object-cover" /> : <ShoppingCart className="h-5 w-5 text-muted-foreground" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{stripVariant(p.name, variantCat?.name)}</p>
+                      <p className="text-xs text-muted-foreground">Stok: {p.stock}{p.stock <= 0 ? " · Habis" : ""}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-display font-bold text-primary">{rupiah(p.price)}</p>
+                      {inCart && <span className="text-[10px] font-semibold text-emerald-600">{inCart.qty} di keranjang</span>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <DialogFooter className="border-t border-border px-5 py-3">
+            <Button variant="outline" className="w-full" onClick={() => setVariantCat(null)} data-testid="variant-done-button">Selesai</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* payment dialog */}
       <Dialog open={payOpen} onOpenChange={setPayOpen}>        <DialogContent data-testid="payment-dialog">

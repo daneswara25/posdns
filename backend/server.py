@@ -121,6 +121,7 @@ class UserUpdate(BaseModel):
 class CategoryInput(BaseModel):
     name: str
     color: Optional[str] = "#2563EB"
+    image: Optional[str] = ""
 
 
 class ProductInput(BaseModel):
@@ -304,14 +305,14 @@ async def list_categories(user: dict = Depends(get_current_user)):
 
 @api_router.post("/categories")
 async def create_category(data: CategoryInput, user: dict = Depends(require_roles("Owner", "Manager", "Gudang"))):
-    doc = {"id": new_id(), "tenant_id": user["tenant_id"], "name": data.name, "color": data.color, "created_at": now_iso()}
+    doc = {"id": new_id(), "tenant_id": user["tenant_id"], "name": data.name, "color": data.color, "image": data.image or "", "created_at": now_iso()}
     await db.categories.insert_one(doc)
     return clean(doc)
 
 
 @api_router.put("/categories/{cid}")
 async def update_category(cid: str, data: CategoryInput, user: dict = Depends(require_roles("Owner", "Manager", "Gudang"))):
-    await db.categories.update_one({"id": cid, "tenant_id": user["tenant_id"]}, {"$set": {"name": data.name, "color": data.color}})
+    await db.categories.update_one({"id": cid, "tenant_id": user["tenant_id"]}, {"$set": {"name": data.name, "color": data.color, "image": data.image or ""}})
     return {"ok": True}
 
 
