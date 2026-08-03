@@ -596,6 +596,7 @@ export default function POS() {
       {/* receipt dialog */}
       <Dialog open={!!receipt} onOpenChange={(o) => { if (!o) { setReceipt(null); document.body.style.pointerEvents = ""; } }}>
         <DialogContent data-testid="receipt-dialog">
+          <DialogHeader className="sr-only"><DialogTitle>Pembayaran Berhasil</DialogTitle></DialogHeader>
           {receipt && (
             <div>
               <div className="mb-3 flex flex-col items-center">

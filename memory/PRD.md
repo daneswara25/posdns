@@ -49,6 +49,13 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 ## Update (2026-06-03) — Bagian 4
 - ADDED: Simpan Nomor Cepat (POS.jsx). Saat nomor WA diketik manual di struk untuk pelanggan non-tersimpan, muncul link "Simpan sebagai pelanggan baru" → prompt nama → POST /customers (nama + nomor). Daftar pelanggan langsung refresh. Tested E2E: pelanggan tersimpan dengan nomor benar. ✓
 
+## Update (2026-06-04) — Redesain POS + Import Pelanggan
+- ADDED: Redesain tampilan POS (POS.jsx). Grid utama kini menampilkan KOTAK KATEGORI (produk utama) sebagai thumbnail seragam 1:1 dengan badge jumlah varian; varian (produk dalam kategori) disembunyikan sampai kotak diklik → muncul dialog pemilih varian (`variant-dialog`) dengan nama varian (prefix kategori dihapus), harga, stok. Bisa tambah beberapa varian, tombol "Selesai" menutup. Pencarian/scan barcode tetap: mengetik → grid beralih ke kartu produk langsung. Tested E2E (testing agent iteration_3): PASS.
+- ADDED: Upload gambar kategori (Categories.jsx) dengan kompresi Canvas (400px, JPEG 50%). Backend CategoryInput + create/update simpan field `image`. Gambar kategori dipakai sebagai thumbnail kotak di POS (fallback: gambar produk pertama → inisial). Tested E2E: PASS.
+- DONE: Import 648 pelanggan dari CSV (`scripts/import_customers.py`), mengganti total data lama, termasuk jumlah kunjungan (visits) & total belanja (total_spent). Verified: 648 pelanggan, mis. GITA (177 kunjungan, Rp50.702.000).
+- FIXED (deploy): tambah endpoint app-level `GET /health` → 200 (sebelumnya 404 menyebabkan deploy gagal).
+- NOTE: posdns.html `SYSTEM_URL` diarahkan ke produksi (https://pos-retail-platform.emergent.host). File + README tersedia di public/.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
