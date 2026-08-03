@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 from pathlib import Path
 import os
+import json
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -799,6 +800,30 @@ async def startup():
             "receipt_footer": "Terima kasih telah berbelanja!",
         })
         logger.info("Seeded owner account")
+
+    # Seed customers from bundled CSV export if none exist yet (for fresh production DB)
+    owner = await db.users.find_one({"username": owner_username})
+    if owner:
+        tid = owner["tenant_id"]
+        cust_count = await db.customers.count_documents({"tenant_id": tid})
+        if cust_count == 0:
+            seed_path = ROOT_DIR / "seed_customers.json"
+            if seed_path.exists():
+                try:
+                    with open(seed_path, "r", encoding="utf-8") as f:
+                        seed_customers = json.load(f)
+                    now = now_iso()
+                    docs = [{
+                        "id": new_id(), "tenant_id": tid, "name": c.get("name", ""),
+                        "phone": c.get("phone", ""), "email": c.get("email", ""),
+                        "address": c.get("address", ""), "visits": int(c.get("visits", 0)),
+                        "total_spent": float(c.get("total_spent", 0)), "created_at": now,
+                    } for c in seed_customers if c.get("name")]
+                    if docs:
+                        await db.customers.insert_many(docs)
+                        logger.info(f"Seeded {len(docs)} customers from seed_customers.json")
+                except Exception as e:
+                    logger.error(f"Customer seed failed: {e}")
 
 
 @app.on_event("shutdown")

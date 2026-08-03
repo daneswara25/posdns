@@ -5,12 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, History, User } from "lucide-react";
+import { Plus, Pencil, Trash2, History, User, Search } from "lucide-react";
 
 const EMPTY = { name: "", phone: "", email: "", address: "" };
 
 export default function Customers() {
   const [list, setList] = useState([]);
+  const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [editId, setEditId] = useState(null);
@@ -18,6 +19,12 @@ export default function Customers() {
 
   const load = () => { api.get("/customers").then((r) => setList(r.data)); };
   useEffect(load, []);
+
+  const term = q.trim().toLowerCase();
+  const filtered = term
+    ? list.filter((c) => c.name.toLowerCase().includes(term) || (c.phone || "").toLowerCase().includes(term))
+    : list;
+  const shown = filtered.slice(0, 200);
 
   const save = async () => {
     if (!form.name) return toast.error("Nama wajib diisi");
@@ -44,8 +51,16 @@ export default function Customers() {
         <Button onClick={() => { setForm(EMPTY); setEditId(null); setOpen(true); }} className="gap-2" data-testid="add-customer-button"><Plus className="h-4 w-4" /> Tambah</Button>
       </div>
 
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama atau nomor telepon..." className="pl-10" data-testid="customer-search" />
+      </div>
+      <p className="text-xs text-muted-foreground" data-testid="customer-count">
+        {term ? `${filtered.length} hasil` : `${list.length} pelanggan`}{filtered.length > 200 ? " · menampilkan 200 teratas, persempit pencarian" : ""}
+      </p>
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {list.map((c) => (
+        {shown.map((c) => (
           <div key={c.id} className="rounded-lg border border-border bg-card p-4" data-testid={`customer-${c.id}`}>
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
@@ -68,6 +83,7 @@ export default function Customers() {
           </div>
         ))}
         {list.length === 0 && <p className="text-sm text-muted-foreground">Belum ada pelanggan.</p>}
+        {list.length > 0 && filtered.length === 0 && <p className="text-sm text-muted-foreground">Tidak ada pelanggan cocok.</p>}
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
