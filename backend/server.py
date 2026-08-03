@@ -405,10 +405,12 @@ async def create_sale(data: SaleInput, user: dict = Depends(get_current_user)):
     count = await db.sales.count_documents({"tenant_id": user["tenant_id"]})
     invoice = f"INV-{datetime.now().strftime('%y%m%d')}-{count + 1:04d}"
     cust_name = data.customer_name
+    cust_phone = ""
     if data.customer_id:
         cust = await db.customers.find_one({"id": data.customer_id, "tenant_id": user["tenant_id"]})
         if cust:
             cust_name = cust["name"]
+            cust_phone = cust.get("phone", "") or ""
             await db.customers.update_one(
                 {"id": data.customer_id},
                 {"$inc": {"total_spent": total, "visits": 1}},
@@ -420,7 +422,7 @@ async def create_sale(data: SaleInput, user: dict = Depends(get_current_user)):
         "total": total, "cost": total_cost, "profit": (subtotal - data.discount) - total_cost,
         "payment_method": data.payment_method, "paid_amount": data.paid_amount,
         "change": max(0, data.paid_amount - total), "customer_name": cust_name,
-        "customer_id": data.customer_id,
+        "customer_id": data.customer_id, "customer_phone": cust_phone,
         "cashier": user.get("name", ""), "cashier_id": user["id"], "created_at": now_iso(),
     }
     await db.sales.insert_one(doc)
@@ -504,6 +506,28 @@ async def report_sales(user: dict = Depends(require_roles("Owner", "Manager")),
         "by_method": [{"method": k, "total": v} for k, v in by_method.items()],
         "sales": sales,
     }
+
+
+@api_router.get("/reports/monthly")
+async def report_monthly(user: dict = Depends(require_roles("Owner", "Manager")),
+                         year: int = Query(...)):
+    tid = user["tenant_id"]
+    sales = await db.sales.find({"tenant_id": tid, "refunded": {"$ne": True}}, {"_id": 0}).to_list(20000)
+    months = [{"month": m, "total": 0, "profit": 0, "count": 0} for m in range(1, 13)]
+    prefix = f"{year}-"
+    for s in sales:
+        created = s.get("created_at", "")
+        if not created.startswith(prefix):
+            continue
+        try:
+            m = int(created[5:7])
+        except (ValueError, IndexError):
+            continue
+        if 1 <= m <= 12:
+            months[m - 1]["total"] += s["total"]
+            months[m - 1]["profit"] += s.get("profit", 0)
+            months[m - 1]["count"] += 1
+    return {"year": year, "months": months}
 
 
 # ---------- Settings ----------

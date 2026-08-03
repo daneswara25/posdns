@@ -13,7 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, Plus, Minus, Trash2, X, ArrowLeft, ShoppingCart, ScanLine, CheckCircle2, PauseCircle, PlayCircle, HandCoins, Copy } from "lucide-react";
+import { Search, Plus, Minus, Trash2, X, ArrowLeft, ShoppingCart, ScanLine, CheckCircle2, PauseCircle, PlayCircle, HandCoins, Copy, MessageCircle } from "lucide-react";
 
 const METHODS = ["Tunai", "Kartu", "QRIS", "E-Wallet"];
 
@@ -203,7 +203,7 @@ export default function POS() {
     };
   };
 
-  const copyBill = async (r) => {
+  const buildBillText = (r) => {
     const lines = [];
     lines.push(`*${settings.business_name || "KasirCloud"}*`);
     if (settings.address) lines.push(settings.address);
@@ -226,7 +226,30 @@ export default function POS() {
     if (r.change) lines.push(`Kembali  : ${rupiah(r.change)}`);
     lines.push("--------------------------------");
     lines.push(settings.receipt_footer || "Terima kasih telah berbelanja!");
-    const text = lines.join("\n");
+    return lines.join("\n");
+  };
+
+  const normalizePhone = (p) => {
+    let d = (p || "").replace(/[^0-9]/g, "");
+    if (!d) return "";
+    if (d.startsWith("0")) d = "62" + d.slice(1);
+    else if (d.startsWith("62")) { /* ok */ }
+    else if (d.startsWith("8")) d = "62" + d;
+    return d;
+  };
+
+  const sendWhatsApp = (r) => {
+    const text = buildBillText(r);
+    const phone = normalizePhone(r.customer_phone);
+    const url = phone
+      ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank");
+    if (!phone) toast.info("Nomor pelanggan tidak ada — pilih kontak tujuan di WhatsApp");
+  };
+
+  const copyBill = async (r) => {
+    const text = buildBillText(r);
     try {
       await navigator.clipboard.writeText(text);
       toast.success("Struk disalin — tinggal tempel di WhatsApp pelanggan");
@@ -495,8 +518,11 @@ export default function POS() {
                 <div className="flex justify-between"><span>Kembalian</span><span>{rupiah(receipt.change)}</span></div>
               </div>
               <div className="mt-4 space-y-2">
+                <Button className="w-full gap-2 bg-[#25D366] text-white hover:bg-[#1ebe5b]" onClick={() => sendWhatsApp(receipt)} data-testid="receipt-whatsapp-button">
+                  <MessageCircle className="h-4 w-4" /> Kirim Struk via WhatsApp
+                </Button>
                 <Button variant="secondary" className="w-full gap-2" onClick={() => copyBill(receipt)} data-testid="receipt-copy-button">
-                  <Copy className="h-4 w-4" /> Salin Struk untuk WhatsApp
+                  <Copy className="h-4 w-4" /> Salin Struk
                 </Button>
                 <div className="flex gap-2">
                   <Button variant="outline" className="flex-1" onClick={() => printReceipt(receipt)} data-testid="receipt-print-button">Cetak</Button>
