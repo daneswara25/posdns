@@ -154,7 +154,18 @@ export default function Products() {
             <div className="space-y-1"><Label>Stok</Label><Input type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} data-testid="product-stock-input" /></div>
             <div className="space-y-1"><Label>Min. Stok</Label><Input type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: e.target.value })} /></div>
             <div className="space-y-1"><Label>Satuan</Label><Input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} /></div>
-            <div className="col-span-2 space-y-1"><Label>URL Gambar (opsional)</Label><Input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} /></div>
+            <div className="col-span-2 space-y-2">
+              <Label>Gambar Produk <span className="text-muted-foreground">(otomatis dikompres)</span></Label>
+              <div className="flex items-center gap-3">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-secondary">
+                  {form.image ? <img src={form.image} alt="" className="h-full w-full object-cover" /> : <span className="text-xs text-muted-foreground">Kosong</span>}
+                </div>
+                <div className="flex-1 space-y-1">
+                  <Input type="file" accept="image/*" onChange={handleImage} data-testid="product-image-input" />
+                  {form.image && <button type="button" onClick={() => setForm({ ...form, image: "" })} className="text-xs text-destructive">Hapus gambar</button>}
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button onClick={save} className="w-full" data-testid="save-product-button">Simpan</Button>

@@ -16,6 +16,9 @@ export default function Reports() {
   const [rep, setRep] = useState(null);
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
+  const now = new Date();
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [year, setYear] = useState(now.getFullYear());
 
   const load = () => {
     const params = {};
@@ -24,6 +27,17 @@ export default function Reports() {
     api.get("/reports/sales", { params }).then((r) => setRep(r.data));
   };
   useEffect(load, []);
+
+  const loadMonth = () => {
+    const s = `${year}-${String(month).padStart(2, "0")}-01`;
+    const last = new Date(year, month, 0).getDate();
+    const e = `${year}-${String(month).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
+    setStart(s); setEnd(e);
+    api.get("/reports/sales", { params: { start: s, end: e } }).then((r) => setRep(r.data));
+  };
+
+  const MONTHS = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+  const YEARS = Array.from({ length: 6 }, (_, i) => now.getFullYear() - i);
 
   const refund = async (id) => {
     if (!window.confirm("Refund transaksi ini? Stok akan dikembalikan.")) return;
@@ -45,10 +59,27 @@ export default function Reports() {
         <h1 className="font-display text-3xl font-bold tracking-tight">Laporan Penjualan</h1>
       </div>
 
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1"><Label className="text-xs">Dari</Label><Input type="date" value={start} onChange={(e) => setStart(e.target.value)} data-testid="report-start" /></div>
-        <div className="space-y-1"><Label className="text-xs">Sampai</Label><Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} data-testid="report-end" /></div>
-        <Button onClick={load} data-testid="report-filter-button">Terapkan</Button>
+      <div className="space-y-3 rounded-lg border border-border bg-card p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Bulan</Label>
+            <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="h-10 rounded-md border border-input bg-background px-3 text-sm" data-testid="report-month">
+              {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Tahun</Label>
+            <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="h-10 rounded-md border border-input bg-background px-3 text-sm" data-testid="report-year">
+              {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+          <Button onClick={loadMonth} data-testid="report-month-button">Lihat Penjualan Bulan Ini</Button>
+        </div>
+        <div className="flex flex-wrap items-end gap-3 border-t border-border pt-3">
+          <div className="space-y-1"><Label className="text-xs">Dari (custom)</Label><Input type="date" value={start} onChange={(e) => setStart(e.target.value)} data-testid="report-start" /></div>
+          <div className="space-y-1"><Label className="text-xs">Sampai</Label><Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} data-testid="report-end" /></div>
+          <Button variant="outline" onClick={load} data-testid="report-filter-button">Terapkan Rentang</Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
