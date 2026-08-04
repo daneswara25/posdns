@@ -172,6 +172,8 @@ class SettingsInput(BaseModel):
     currency: Optional[str] = None
     tax_rate: Optional[float] = None
     receipt_footer: Optional[str] = None
+    logo: Optional[str] = None
+    print_mode: Optional[str] = None
 
 
 class CustomerInput(BaseModel):
@@ -532,6 +534,17 @@ async def report_monthly(user: dict = Depends(require_roles("Owner", "Manager"))
     return {"year": year, "months": months}
 
 
+@api_router.post("/admin/clear-transactions")
+async def clear_transactions(user: dict = Depends(require_roles("Owner"))):
+    tid = user["tenant_id"]
+    result = {}
+    for coll in ["sales", "orders", "held_orders", "activities", "stock_movements"]:
+        r = await db[coll].delete_many({"tenant_id": tid})
+        result[coll] = r.deleted_count
+    await log_activity(tid, user, "Reset Data Transaksi", "Semua transaksi percobaan dihapus")
+    return {"ok": True, "deleted": result}
+
+
 # ---------- Settings ----------
 @api_router.get("/settings")
 async def get_settings(user: dict = Depends(get_current_user)):
@@ -784,22 +797,31 @@ async def startup():
     owner_username = os.environ["OWNER_USERNAME"].lower().strip()
     existing = await db.users.find_one({"username": owner_username})
     if not existing:
-        tenant_id = new_id()
-        await db.tenants.insert_one({
-            "id": tenant_id, "name": os.environ.get("OWNER_BUSINESS", "Bisnis Saya"), "created_at": now_iso(),
-        })
-        await db.users.insert_one({
-            "id": new_id(), "tenant_id": tenant_id, "username": owner_username,
-            "password_hash": hash_password(os.environ["OWNER_PASSWORD"]),
-            "name": os.environ.get("OWNER_NAME", "Owner"), "role": "Owner",
-            "active": True, "created_at": now_iso(),
-        })
-        await db.settings.insert_one({
-            "tenant_id": tenant_id, "business_name": os.environ.get("OWNER_BUSINESS", "Bisnis Saya"),
-            "address": "", "phone": "", "currency": "Rp", "tax_rate": 11.0,
-            "receipt_footer": "Terima kasih telah berbelanja!",
-        })
-        logger.info("Seeded owner account")
+        # Migrate an existing owner (older username) to the env super-admin credentials
+        old_owner = await db.users.find_one({"role": "Owner"})
+        if old_owner:
+            await db.users.update_one(
+                {"id": old_owner["id"]},
+                {"$set": {"username": owner_username, "password_hash": hash_password(os.environ["OWNER_PASSWORD"])}},
+            )
+            logger.info(f"Migrated super-admin to username '{owner_username}'")
+        else:
+            tenant_id = new_id()
+            await db.tenants.insert_one({
+                "id": tenant_id, "name": os.environ.get("OWNER_BUSINESS", "Bisnis Saya"), "created_at": now_iso(),
+            })
+            await db.users.insert_one({
+                "id": new_id(), "tenant_id": tenant_id, "username": owner_username,
+                "password_hash": hash_password(os.environ["OWNER_PASSWORD"]),
+                "name": os.environ.get("OWNER_NAME", "Owner"), "role": "Owner",
+                "active": True, "created_at": now_iso(),
+            })
+            await db.settings.insert_one({
+                "tenant_id": tenant_id, "business_name": os.environ.get("OWNER_BUSINESS", "Bisnis Saya"),
+                "address": "", "phone": "", "currency": "Rp", "tax_rate": 11.0,
+                "receipt_footer": "Terima kasih telah berbelanja!",
+            })
+            logger.info("Seeded owner account")
 
     # Seed customers from bundled CSV export if none exist yet (for fresh production DB)
     owner = await db.users.find_one({"username": owner_username})

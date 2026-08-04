@@ -64,6 +64,13 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - ADDED: Reprint Nota di menu Pesanan (Orders.jsx). Tiap kartu pesanan punya tombol "Cetak Nota" (`reprint-order-*`) → cetak ulang nota thermal (iframe, 80mm) berisi item, subtotal, deposit, sisa/lunas, status. Ambil settings toko untuk header/footer. Tested E2E: 5 tombol muncul, klik tanpa error.
 - ADDED: Pencarian pelanggan di POS (POS.jsx). Select dropdown 648 pelanggan diganti combobox (Popover + Command) dengan kolom cari nama/nomor (`pos-customer-search`). Tested E2E: cari "GITA" → hasil terfilter, pilih → trigger update, tanpa pointer-events lock.
 
+## Update (2026-06-05) — Branding, Kredensial, Printer
+- CHANGED: Super-admin credentials → username `admin`, password `Limited0`. backend/.env OWNER_USERNAME/OWNER_PASSWORD diperbarui. Startup migration merename Owner lama ke `admin` + reset password (idempotent: jalan otomatis di produksi setelah redeploy). Preview sudah diperbaiki (single owner `admin`, tenant 300 produk).
+- ADDED: Endpoint `POST /api/admin/clear-transactions` (Owner-only) → hapus sales/orders/held_orders/activities/stock_movements (produk & pelanggan aman). UI tombol "Reset Data Transaksi" di Pengaturan (Danger Zone). Transaksi percobaan preview sudah dikosongkan.
+- CHANGED: Nama aplikasi → "Daneswara POS" (Layout, Login, index.html title, default receipt name, settings.business_name). Logo usaha (`frontend/public/logo.png`) dipasang di sidebar + login. Logo juga tampil di struk cetak Desktop/HTML.
+- ADDED: Menu Printer di Pengaturan (super admin). Mode cetak: Desktop/USB (dialog print, semua perangkat) atau Bluetooth Thermal 58mm (Web Bluetooth, Chrome Android/Windows, printer BLE; TIDAK di iOS). Tombol Hubungkan/Putus printer BLE, status, Cetak Tes. Util baru `frontend/src/lib/printer.js` (ESC/POS encoder + BLE + desktop iframe). POS.jsx & Orders.jsx pakai `printReceiptSmart`.
+- NOTE printer BLE: logo hanya di cetak Desktop (ESC/POS thermal = teks + nama toko besar). Printer target user: EP5805AI.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.

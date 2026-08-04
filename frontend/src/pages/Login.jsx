@@ -40,12 +40,11 @@ export default function Login() {
         />
         <div className="absolute inset-0 bg-blue-950/70" />
         <div className="absolute bottom-0 p-12 text-white">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-white/15 backdrop-blur-md">
-            <Store className="h-6 w-6" />
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-white p-2">
+            <img src="/logo.png" alt="Daneswara POS" className="h-full w-full object-contain" />
           </div>
           <h1 className="font-display text-4xl font-black leading-tight tracking-tight">
-            Point of Sale
-            <br /> berbasis Cloud
+            Daneswara POS
           </h1>
           <p className="mt-4 max-w-md text-white/70">
             Kelola penjualan, stok, dan laporan bisnis Anda secara real-time dari mana saja.
@@ -57,10 +56,8 @@ export default function Login() {
       <div className="flex items-center justify-center bg-background px-6 py-12">
         <div className="w-full max-w-sm">
           <div className="mb-8 flex items-center gap-2 lg:hidden">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Store className="h-5 w-5" />
-            </div>
-            <span className="font-display text-lg font-bold">KasirCloud</span>
+            <img src="/logo.png" alt="Daneswara POS" className="h-9 w-9 rounded-md object-contain" />
+            <span className="font-display text-lg font-bold">Daneswara POS</span>
           </div>
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Masuk</p>
           <h2 className="mt-1 font-display text-3xl font-bold tracking-tight">Selamat datang kembali</h2>

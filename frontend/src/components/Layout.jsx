@@ -40,10 +40,8 @@ export default function Layout() {
         data-testid="sidebar"
       >
         <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <Store className="h-5 w-5" />
-          </div>
-          <span className="font-display text-lg font-bold tracking-tight">KasirCloud</span>
+          <img src="/logo.png" alt="Daneswara POS" className="h-9 w-9 rounded-md object-contain dark:bg-white dark:p-0.5" />
+          <span className="font-display text-lg font-bold tracking-tight">Daneswara POS</span>
         </div>
         <nav className="flex flex-col gap-1 p-4">
           {items.map((n) => (

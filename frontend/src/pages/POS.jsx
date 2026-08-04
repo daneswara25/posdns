@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import api, { rupiah, formatApiError } from "@/lib/api";
+import { printReceiptSmart } from "@/lib/printer";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -180,69 +181,18 @@ export default function POS() {
     }
   };
 
-  const printReceipt = (r) => {
-    const line = (l, rr) => `<div class="row"><span>${l}</span><span>${rr}</span></div>`;
-    const items = r.items
-      .map((i) => line(`${i.qty}x ${i.name}`, rupiah(i.price * i.qty)))
-      .join("");
-    const html = `<html><head><title>${r.invoice}</title>
-<style>
-  @page { size: 80mm auto; margin: 4mm; }
-  * { font-family: 'Courier New', monospace; font-size: 12px; box-sizing: border-box; }
-  body { margin: 0; color: #000; }
-  h2 { text-align: center; font-size: 14px; margin: 4px 0; }
-  p.sub { text-align: center; margin: 0; font-size: 11px; }
-  .divider { border-top: 1px dashed #000; margin: 6px 0; }
-  .row { display: flex; justify-content: space-between; margin: 2px 0; }
-  .bold { font-weight: bold; }
-  .center { text-align: center; }
-</style></head><body>
-  <h2>${settings.business_name || "KasirCloud"}</h2>
-  ${settings.address ? `<p class="sub">${settings.address}</p>` : ""}
-  ${settings.phone ? `<p class="sub">${settings.phone}</p>` : ""}
-  <div class="divider"></div>
-  <div class="row"><span>${r.invoice}</span></div>
-  <div class="row"><span>${new Date(r.created_at).toLocaleString("id-ID")}</span></div>
-  <div class="row"><span>Kasir: ${r.cashier || ""}</span></div>
-  <div class="divider"></div>
-  ${items}
-  <div class="divider"></div>
-  ${line("Subtotal", rupiah(r.subtotal))}
-  ${line("Diskon", "-" + rupiah(r.discount))}
-  ${line(`Pajak (${r.tax_rate}%)`, rupiah(r.tax))}
-  <div class="row bold"><span>TOTAL</span><span>${rupiah(r.total)}</span></div>
-  ${line(r.payment_method, rupiah(r.paid_amount))}
-  ${line("Kembalian", rupiah(r.change))}
-  <div class="divider"></div>
-  <p class="center">${settings.receipt_footer || "Terima kasih telah berbelanja!"}</p>
-</body></html>`;
-
-    const iframe = document.createElement("iframe");
-    iframe.style.position = "fixed";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
-    iframe.style.border = "0";
-    document.body.appendChild(iframe);
-    const doc = iframe.contentWindow.document;
-    doc.open();
-    doc.write(html);
-    doc.close();
-    iframe.onload = () => {
-      try {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-      } catch (e) {
-        toast.error("Gagal mencetak struk");
-      }
-      setTimeout(() => document.body.removeChild(iframe), 1000);
-    };
+  const printReceipt = async (r) => {
+    try {
+      const mode = await printReceiptSmart(r, settings);
+      if (mode === "bluetooth") toast.success("Struk dikirim ke printer Bluetooth");
+    } catch (e) {
+      toast.error(e.message || "Gagal mencetak struk");
+    }
   };
 
   const buildBillText = (r) => {
     const lines = [];
-    lines.push(`*${settings.business_name || "KasirCloud"}*`);
+    lines.push(`*${settings.business_name || "Daneswara POS"}*`);
     if (settings.address) lines.push(settings.address);
     if (settings.phone) lines.push(`Telp: ${settings.phone}`);
     lines.push("--------------------------------");
