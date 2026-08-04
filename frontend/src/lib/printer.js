@@ -6,6 +6,23 @@ let btName = "";
 
 export const rp = (n) => "Rp" + Number(n || 0).toLocaleString("id-ID", { maximumFractionDigits: 0 });
 
+// Reusable hidden iframe for desktop printing (avoids re-creating the DOM node each print).
+let _printFrame = null;
+function getPrintFrame() {
+  if (_printFrame && document.body.contains(_printFrame)) return _printFrame;
+  _printFrame = document.createElement("iframe");
+  _printFrame.setAttribute("aria-hidden", "true");
+  _printFrame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
+  document.body.appendChild(_printFrame);
+  return _printFrame;
+}
+
+// Warm the browser image cache for the default logo so first print is fast.
+if (typeof window !== "undefined") {
+  const pre = new Image();
+  pre.src = "/logo.png";
+}
+
 export const bluetoothSupported = () => typeof navigator !== "undefined" && !!navigator.bluetooth;
 export const isPrinterConnected = () => !!btChar;
 export const getPrinterName = () => btName;
@@ -199,15 +216,17 @@ export function printDesktop(r, settings) {
   ${r.note ? `<p class="sub">Catatan: ${r.note}</p>` : ""}
   <p class="center">${settings.receipt_footer || "Terima kasih telah berbelanja!"}</p>
 </body></html>`;
-  const iframe = document.createElement("iframe");
-  iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
-  document.body.appendChild(iframe);
+  const iframe = getPrintFrame();
   const doc = iframe.contentWindow.document;
   doc.open(); doc.write(html); doc.close();
-  iframe.onload = () => {
-    try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch (e) {}
-    setTimeout(() => document.body.removeChild(iframe), 1000);
-  };
+  const fire = () => { try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch (e) {} };
+  // Print as soon as content is ready; don't block on slow image loads.
+  let fired = false;
+  const once = () => { if (fired) return; fired = true; fire(); };
+  iframe.onload = once;
+  const logoImg = doc.querySelector("img.logo");
+  if (!logoImg || logoImg.complete) once();
+  else { logoImg.onload = once; logoImg.onerror = once; setTimeout(once, 400); }
 }
 
 // Main entry: prints according to selected mode. Falls back to desktop on error.

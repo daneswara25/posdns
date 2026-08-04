@@ -475,12 +475,12 @@ export default function POS() {
 
       {/* variant picker dialog */}
       <Dialog open={!!variantCat} onOpenChange={(o) => { if (!o) { setVariantCat(null); setTimeout(() => { document.body.style.pointerEvents = ""; }, 100); } }}>
-        <DialogContent className="max-h-[85vh] overflow-hidden p-0 sm:max-w-lg" onCloseAutoFocus={() => { document.body.style.pointerEvents = ""; }} data-testid="variant-dialog">
-          <DialogHeader className="border-b border-border px-5 pb-3 pt-5">
+        <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden p-0 sm:max-w-lg" onCloseAutoFocus={() => { document.body.style.pointerEvents = ""; }} data-testid="variant-dialog">
+          <DialogHeader className="shrink-0 border-b border-border px-5 pb-3 pt-5">
             <DialogTitle className="font-display">{variantCat?.name}</DialogTitle>
             <p className="text-xs text-muted-foreground">Pilih varian untuk ditambahkan ke keranjang</p>
           </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto px-5 pb-5">
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3">
             <div className="space-y-2">
               {variantCat?.items.map((p) => {
                 const inCart = cart.find((x) => x.product_id === p.id);
@@ -508,7 +508,7 @@ export default function POS() {
               })}
             </div>
           </div>
-          <div className="border-t border-border px-5 py-3">
+          <div className="shrink-0 border-t border-border px-5 py-3">
             <label className="mb-1 block text-xs font-medium text-muted-foreground">Catatan (muncul di struk)</label>
             <textarea
               value={variantNote}
