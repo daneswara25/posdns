@@ -129,6 +129,7 @@ async function buildEscPos(r, settings) {
   (r.items || []).forEach((i) => {
     text(`${i.qty}x ${i.name}\n`);
     text(row("", rp(i.price * i.qty)));
+    if (i.note) text(`  * ${i.note}\n`);
   });
   text(divider);
   text(row("Subtotal", rp(r.subtotal)));
@@ -157,7 +158,7 @@ export function printDesktop(r, settings) {
   const logo = settings.logo || `${window.location.origin}/logo.png`;
   const line = (l, rr) => `<div class="row"><span>${l}</span><span>${rr}</span></div>`;
   const items = (r.items || [])
-    .map((i) => line(`${i.qty}x ${i.name}`, rp(i.price * i.qty)))
+    .map((i) => line(`${i.qty}x ${i.name}`, rp(i.price * i.qty)) + (i.note ? `<div class="note">* ${i.note}</div>` : ""))
     .join("");
   const isOrder = r.deposit_amount != null && r.remaining != null && !r.paid_amount;
   const payRows = isOrder
@@ -173,6 +174,7 @@ export function printDesktop(r, settings) {
   img.logo { display:block; margin: 0 auto 4px; max-width: 140px; max-height: 90px; object-fit: contain; }
   .divider { border-top: 1px dashed #000; margin: 6px 0; }
   .row { display: flex; justify-content: space-between; margin: 2px 0; }
+  .note { font-size: 11px; font-style: italic; margin: 0 0 2px 8px; }
   .bold { font-weight: bold; }
   .center { text-align: center; }
 </style></head><body>

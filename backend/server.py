@@ -150,6 +150,7 @@ class SaleItem(BaseModel):
     price: float
     qty: int
     cost: float = 0
+    note: Optional[str] = ""
 
 
 class SaleInput(BaseModel):

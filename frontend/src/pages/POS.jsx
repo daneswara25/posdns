@@ -29,6 +29,7 @@ export default function POS() {
   const [cat, setCat] = useState("all");
   const [variantCat, setVariantCat] = useState(null);
   const [custOpen, setCustOpen] = useState(false);
+  const [variantNote, setVariantNote] = useState("");
   const [cart, setCart] = useState([]);
   const [discount, setDiscount] = useState(0);
   const [taxRate, setTaxRate] = useState(0);
@@ -66,7 +67,8 @@ export default function POS() {
     toast.success("Pesanan ditahan");
   };
   const resumeOrder = async (h) => {
-    setCart(h.items); setDiscount(h.discount || 0);
+    setCart((h.items || []).map((i) => ({ ...i, note: i.note || "", lineId: i.lineId || `${i.product_id}|${i.note || ""}` })));
+    setDiscount(h.discount || 0);
     await api.delete(`/held-orders/${h.id}`);
     api.get("/held-orders").then((r) => setHeld(r.data));
     toast.success(`Melanjutkan ${h.label}`);
@@ -127,19 +129,20 @@ export default function POS() {
     return name.startsWith(pref) ? name.slice(pref.length) : name;
   };
 
-  const addToCart = (p) => {
+  const addToCart = (p, note = "") => {
     if (p.stock <= 0) return toast.error("Stok habis");
+    const lineId = `${p.id}|${note}`;
     setCart((c) => {
-      const ex = c.find((x) => x.product_id === p.id);
-      if (ex) return c.map((x) => (x.product_id === p.id ? { ...x, qty: x.qty + 1 } : x));
-      return [...c, { product_id: p.id, name: p.name, price: p.price, cost: p.cost || 0, qty: 1 }];
+      const ex = c.find((x) => x.lineId === lineId);
+      if (ex) return c.map((x) => (x.lineId === lineId ? { ...x, qty: x.qty + 1 } : x));
+      return [...c, { lineId, product_id: p.id, name: p.name, price: p.price, cost: p.cost || 0, qty: 1, note }];
     });
   };
-  const setQty = (id, delta) =>
+  const setQty = (lineId, delta) =>
     setCart((c) =>
-      c.map((x) => (x.product_id === id ? { ...x, qty: Math.max(1, x.qty + delta) } : x))
+      c.map((x) => (x.lineId === lineId ? { ...x, qty: Math.max(1, x.qty + delta) } : x))
     );
-  const removeItem = (id) => setCart((c) => c.filter((x) => x.product_id !== id));
+  const removeItem = (lineId) => setCart((c) => c.filter((x) => x.lineId !== lineId));
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const taxAmt = ((subtotal - discount) * taxRate) / 100;
@@ -203,6 +206,7 @@ export default function POS() {
     r.items.forEach((i) => {
       lines.push(`${i.qty} x ${i.name}`);
       lines.push(`     @${rupiah(i.price)}  =  ${rupiah(i.price * i.qty)}`);
+      if (i.note) lines.push(`     * ${i.note}`);
     });
     lines.push("--------------------------------");
     lines.push(`Subtotal : ${rupiah(r.subtotal)}`);
@@ -328,8 +332,7 @@ export default function POS() {
                     <motion.button
                       key={tile.id}
                       whileTap={{ scale: 0.96 }}
-                      onClick={() => setVariantCat(tile)}
-                      data-testid={`pos-cat-tile-${tile.id}`}
+                      onClick={() => { setVariantCat(tile); setVariantNote(""); }}                      data-testid={`pos-cat-tile-${tile.id}`}
                       className="group relative flex aspect-square flex-col overflow-hidden rounded-lg border border-border bg-card text-left transition-colors duration-200 hover:border-primary"
                     >
                       <div className="absolute inset-0 flex items-center justify-center bg-secondary">
@@ -411,7 +414,7 @@ export default function POS() {
               {cart.length === 0 && <p className="text-sm text-muted-foreground">Belum ada item.</p>}
               {cart.map((i) => (
                 <motion.div
-                  key={i.product_id}
+                  key={i.lineId}
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
@@ -419,18 +422,21 @@ export default function POS() {
                   data-testid={`cart-item-${i.product_id}`}
                 >
                   <div className="flex items-start justify-between">
-                    <p className="text-sm font-medium">{i.name}</p>
-                    <button onClick={() => removeItem(i.product_id)} className="text-destructive" data-testid={`cart-remove-${i.product_id}`}>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{i.name}</p>
+                      {i.note && <p className="mt-0.5 text-xs italic text-muted-foreground">📝 {i.note}</p>}
+                    </div>
+                    <button onClick={() => removeItem(i.lineId)} className="text-destructive" data-testid={`cart-remove-${i.product_id}`}>
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                   <div className="mt-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => setQty(i.product_id, -1)} className="flex h-7 w-7 items-center justify-center rounded-md bg-secondary" data-testid={`cart-minus-${i.product_id}`}>
+                      <button onClick={() => setQty(i.lineId, -1)} className="flex h-7 w-7 items-center justify-center rounded-md bg-secondary" data-testid={`cart-minus-${i.product_id}`}>
                         <Minus className="h-3.5 w-3.5" />
                       </button>
                       <span className="w-6 text-center text-sm font-semibold">{i.qty}</span>
-                      <button onClick={() => setQty(i.product_id, 1)} className="flex h-7 w-7 items-center justify-center rounded-md bg-secondary" data-testid={`cart-plus-${i.product_id}`}>
+                      <button onClick={() => setQty(i.lineId, 1)} className="flex h-7 w-7 items-center justify-center rounded-md bg-secondary" data-testid={`cart-plus-${i.product_id}`}>
                         <Plus className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -481,7 +487,7 @@ export default function POS() {
                 return (
                   <button
                     key={p.id}
-                    onClick={() => addToCart(p)}
+                    onClick={() => addToCart(p, variantNote.trim())}
                     disabled={p.stock <= 0}
                     data-testid={`variant-item-${p.id}`}
                     className="flex w-full items-center gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:border-primary disabled:opacity-40"
@@ -502,9 +508,19 @@ export default function POS() {
               })}
             </div>
           </div>
-          <DialogFooter className="border-t border-border px-5 py-3">
+          <div className="border-t border-border px-5 py-3">
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Catatan (muncul di struk)</label>
+            <textarea
+              value={variantNote}
+              onChange={(e) => setVariantNote(e.target.value)}
+              placeholder="cth: Sablon logo depan, ukuran L, warna hitam..."
+              rows={2}
+              data-testid="variant-note-input"
+              className="mb-3 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+            />
+            <p className="mb-3 text-[11px] text-muted-foreground">Catatan ini akan menempel pada varian yang Anda tambahkan setelahnya.</p>
             <Button variant="outline" className="w-full" onClick={() => setVariantCat(null)} data-testid="variant-done-button">Selesai</Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -589,10 +605,13 @@ export default function POS() {
               <div className="rounded-md border border-dashed border-border p-4 font-mono text-xs">
                 <p className="text-center font-bold">{receipt.invoice}</p>
                 <div className="my-2 border-t border-dashed" />
-                {receipt.items.map((i) => (
-                  <div key={i.product_id} className="flex justify-between">
-                    <span>{i.qty}x {i.name}</span>
-                    <span>{rupiah(i.price * i.qty)}</span>
+                {receipt.items.map((i, idx) => (
+                  <div key={idx}>
+                    <div className="flex justify-between">
+                      <span>{i.qty}x {i.name}</span>
+                      <span>{rupiah(i.price * i.qty)}</span>
+                    </div>
+                    {i.note && <p className="pl-2 italic text-muted-foreground">* {i.note}</p>}
                   </div>
                 ))}
                 <div className="my-2 border-t border-dashed" />

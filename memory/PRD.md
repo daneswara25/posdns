@@ -77,6 +77,11 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - ADDED: Cetak logo pada printer Bluetooth thermal (ESC/POS raster GS v 0). `printer.js` → `imageToRaster()` konversi gambar ke bitmap 1-bit (lebar 384 dots), threshold non-putih jadi tinta (logo kuning tercetak sebagai siluet hitam). `buildEscPos` kini async, prepend logo raster + nama toko.
 - ADDED: Ubah Password sendiri. Backend `POST /api/auth/change-password` (verify password lama via verify_password, min 6 char). UI: tombol kunci di header (semua role) → dialog Ubah Password. Tested: tolak password salah, ganti sukses, login password baru, revert. ✓
 
+## Update (2026-06-05) — Bagian 3: Catatan per Item di Struk
+- ADDED: Kolom "Catatan" di bagian bawah dialog pemilihan varian POS (`variant-note-input`). Catatan menempel ke item yang ditambahkan (per baris keranjang; item sama dengan catatan berbeda = baris terpisah via `lineId`). Backend `SaleItem.note` (juga berlaku untuk held-orders & pesanan deposit karena semua pakai List[SaleItem]).
+- Catatan tampil di: keranjang (📝), struk layar, cetak Desktop/HTML (`.note`), cetak thermal ESC/POS (`* catatan`), dan teks WhatsApp. Cart ops (qty/hapus) direfactor ke `lineId`; resume held-order backfill lineId.
+- Tested E2E: tambah varian + catatan "Sablon logo depan ukuran L" → tampil di keranjang & struk, tersimpan di backend. ✓
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
