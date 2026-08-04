@@ -71,6 +71,12 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - ADDED: Menu Printer di Pengaturan (super admin). Mode cetak: Desktop/USB (dialog print, semua perangkat) atau Bluetooth Thermal 58mm (Web Bluetooth, Chrome Android/Windows, printer BLE; TIDAK di iOS). Tombol Hubungkan/Putus printer BLE, status, Cetak Tes. Util baru `frontend/src/lib/printer.js` (ESC/POS encoder + BLE + desktop iframe). POS.jsx & Orders.jsx pakai `printReceiptSmart`.
 - NOTE printer BLE: logo hanya di cetak Desktop (ESC/POS thermal = teks + nama toko besar). Printer target user: EP5805AI.
 
+## Update (2026-06-05) — Bagian 2: Logo Struk Thermal, Ubah Password, Logo Baru
+- CHANGED: Logo aplikasi diganti ke logo baru (Odin kepala emas / kuning) di `frontend/public/logo.png`. Kontainer logo diberi latar gelap (sidebar/login) agar kontras.
+- ADDED: Upload "Logo Struk" di Pengaturan → disimpan base64 di `settings.logo`. Dipakai di cetak Desktop (HTML) & thermal. Kosong = pakai logo aplikasi default.
+- ADDED: Cetak logo pada printer Bluetooth thermal (ESC/POS raster GS v 0). `printer.js` → `imageToRaster()` konversi gambar ke bitmap 1-bit (lebar 384 dots), threshold non-putih jadi tinta (logo kuning tercetak sebagai siluet hitam). `buildEscPos` kini async, prepend logo raster + nama toko.
+- ADDED: Ubah Password sendiri. Backend `POST /api/auth/change-password` (verify password lama via verify_password, min 6 char). UI: tombol kunci di header (semua role) → dialog Ubah Password. Tested: tolak password salah, ganti sukses, login password baru, revert. ✓
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.

@@ -3,10 +3,15 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import api, { formatApiError } from "@/lib/api";
+import { toast } from "sonner";
 import {
   LayoutDashboard, Package, Tags, Warehouse, BarChart3, Users as UsersIcon,
   Settings as SettingsIcon, ShoppingCart, Sun, Moon, LogOut, Menu, X, Store,
-  UserCircle, Truck, ClipboardList, ShoppingBag,
+  UserCircle, Truck, ClipboardList, ShoppingBag, KeyRound,
 } from "lucide-react";
 
 const NAV = [
@@ -28,7 +33,26 @@ export default function Layout() {
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pw, setPw] = useState({ current_password: "", new_password: "", confirm: "" });
+  const [pwLoading, setPwLoading] = useState(false);
   const items = NAV.filter((n) => n.roles.includes(user?.role));
+
+  const changePassword = async () => {
+    if (pw.new_password !== pw.confirm) return toast.error("Konfirmasi password tidak cocok");
+    if (pw.new_password.length < 6) return toast.error("Password baru minimal 6 karakter");
+    setPwLoading(true);
+    try {
+      await api.post("/auth/change-password", { current_password: pw.current_password, new_password: pw.new_password });
+      toast.success("Password berhasil diubah");
+      setPwOpen(false);
+      setPw({ current_password: "", new_password: "", confirm: "" });
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail));
+    } finally {
+      setPwLoading(false);
+    }
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -40,7 +64,9 @@ export default function Layout() {
         data-testid="sidebar"
       >
         <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-          <img src="/logo.png" alt="Daneswara POS" className="h-9 w-9 rounded-md object-contain dark:bg-white dark:p-0.5" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-neutral-900 p-1">
+            <img src="/logo.png" alt="Daneswara POS" className="h-full w-full object-contain" />
+          </div>
           <span className="font-display text-lg font-bold tracking-tight">Daneswara POS</span>
         </div>
         <nav className="flex flex-col gap-1 p-4">
@@ -98,6 +124,9 @@ export default function Layout() {
             <Button variant="ghost" size="icon" onClick={toggle} data-testid="theme-toggle">
               {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Button>
+            <Button variant="ghost" size="icon" onClick={() => setPwOpen(true)} data-testid="change-password-button" title="Ubah Password">
+              <KeyRound className="h-5 w-5" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={logout} data-testid="logout-button">
               <LogOut className="h-5 w-5" />
             </Button>
@@ -107,6 +136,32 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+
+      <Dialog open={pwOpen} onOpenChange={setPwOpen}>
+        <DialogContent data-testid="change-password-dialog">
+          <DialogHeader><DialogTitle>Ubah Password</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label>Password Lama</Label>
+              <Input type="password" value={pw.current_password} onChange={(e) => setPw({ ...pw, current_password: e.target.value })} data-testid="current-password-input" />
+            </div>
+            <div className="space-y-1">
+              <Label>Password Baru</Label>
+              <Input type="password" value={pw.new_password} onChange={(e) => setPw({ ...pw, new_password: e.target.value })} data-testid="new-password-input" />
+            </div>
+            <div className="space-y-1">
+              <Label>Konfirmasi Password Baru</Label>
+              <Input type="password" value={pw.confirm} onChange={(e) => setPw({ ...pw, confirm: e.target.value })} data-testid="confirm-password-input" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPwOpen(false)}>Batal</Button>
+            <Button onClick={changePassword} disabled={pwLoading} data-testid="submit-change-password">
+              {pwLoading ? "Menyimpan..." : "Simpan Password"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

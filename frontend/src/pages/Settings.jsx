@@ -52,6 +52,31 @@ export default function Settings() {
 
   const disconnectBt = () => { disconnectPrinter(); setBtName(""); toast.info("Printer diputus"); };
 
+  const handleLogo = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return toast.error("File harus berupa gambar");
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 384; // thermal 58mm width in dots
+        let { width, height } = img;
+        if (width > MAX) { height = Math.round((height * MAX) / width); width = MAX; }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        setForm((f) => ({ ...f, logo: canvas.toDataURL("image/png") }));
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
   const testPrint = async () => {
     const sample = {
       invoice: "TEST-0001",
@@ -118,6 +143,20 @@ export default function Settings() {
         </div>
 
         <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Logo Struk <span className="text-muted-foreground">(tampil di struk cetak & thermal)</span></Label>
+            <div className="flex items-center gap-3">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-white">
+                <img src={form.logo || "/logo.png"} alt="Logo struk" className="h-full w-full object-contain" data-testid="receipt-logo-preview" />
+              </div>
+              <div className="flex-1 space-y-1">
+                <Input type="file" accept="image/*" onChange={handleLogo} data-testid="receipt-logo-input" />
+                <p className="text-xs text-muted-foreground">Kosongkan untuk pakai logo aplikasi default.</p>
+                {form.logo && <button type="button" onClick={() => setForm({ ...form, logo: "" })} className="text-xs text-destructive" data-testid="remove-receipt-logo">Hapus logo kustom</button>}
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-1">
             <Label>Mode Cetak Struk</Label>
             <Select value={form.print_mode} onValueChange={(v) => setForm({ ...form, print_mode: v })}>

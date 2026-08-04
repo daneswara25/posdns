@@ -40,7 +40,7 @@ export default function Login() {
         />
         <div className="absolute inset-0 bg-blue-950/70" />
         <div className="absolute bottom-0 p-12 text-white">
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-white p-2">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-xl bg-black/40 p-2 backdrop-blur-md ring-1 ring-white/20">
             <img src="/logo.png" alt="Daneswara POS" className="h-full w-full object-contain" />
           </div>
           <h1 className="font-display text-4xl font-black leading-tight tracking-tight">
@@ -56,7 +56,9 @@ export default function Login() {
       <div className="flex items-center justify-center bg-background px-6 py-12">
         <div className="w-full max-w-sm">
           <div className="mb-8 flex items-center gap-2 lg:hidden">
-            <img src="/logo.png" alt="Daneswara POS" className="h-9 w-9 rounded-md object-contain" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-neutral-900 p-1">
+              <img src="/logo.png" alt="Daneswara POS" className="h-full w-full object-contain" />
+            </div>
             <span className="font-display text-lg font-bold">Daneswara POS</span>
           </div>
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Masuk</p>

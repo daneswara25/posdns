@@ -60,8 +60,37 @@ async function writeBytes(bytes) {
   }
 }
 
+// Convert an image (data URL or same-origin path) to an ESC/POS raster command (GS v 0).
+async function imageToRaster(src) {
+  const img = await new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i); i.onerror = rej; i.src = src;
+  });
+  const MAXW = 384; // 58mm printable width in dots
+  let w = img.width, h = img.height;
+  if (w > MAXW) { h = Math.round((h * MAXW) / w); w = MAXW; }
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(img, 0, 0, w, h);
+  const data = ctx.getImageData(0, 0, w, h).data;
+  const bytesPerRow = Math.ceil(w / 8);
+  const raster = new Uint8Array(bytesPerRow * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const idx = (y * w + x) * 4;
+      const rr = data[idx], gg = data[idx + 1], bb = data[idx + 2], aa = data[idx + 3];
+      const nearWhite = rr > 230 && gg > 230 && bb > 230;
+      if (aa > 128 && !nearWhite) raster[y * bytesPerRow + (x >> 3)] |= (0x80 >> (x % 8));
+    }
+  }
+  const header = [0x1d, 0x76, 0x30, 0x00, bytesPerRow & 0xff, (bytesPerRow >> 8) & 0xff, h & 0xff, (h >> 8) & 0xff];
+  return new Uint8Array([...header, ...raster]);
+}
+
 // Build ESC/POS byte stream from a structured receipt.
-function buildEscPos(r, settings) {
+async function buildEscPos(r, settings) {
   const enc = new TextEncoder();
   const out = [];
   const push = (arr) => out.push(...arr);
@@ -77,8 +106,14 @@ function buildEscPos(r, settings) {
   const divider = "-".repeat(WIDTH) + "\n";
 
   push([ESC, 0x40]); // init
-  // header (centered, bold, big)
   push([ESC, 0x61, 0x01]); // center
+  // logo raster (uploaded custom logo, else app default)
+  const logoSrc = settings.logo || `${window.location.origin}/logo.png`;
+  try {
+    const raster = await imageToRaster(logoSrc);
+    push(Array.from(raster));
+    push([0x0a]);
+  } catch (e) { /* skip logo if it fails */ }
   push([ESC, 0x21, 0x30]); // double height+width
   text((settings.business_name || "Daneswara POS") + "\n");
   push([ESC, 0x21, 0x00]); // normal
@@ -119,7 +154,7 @@ function buildEscPos(r, settings) {
 
 // Desktop / HTML print via hidden iframe (works on all devices).
 export function printDesktop(r, settings) {
-  const logo = `${window.location.origin}/logo.png`;
+  const logo = settings.logo || `${window.location.origin}/logo.png`;
   const line = (l, rr) => `<div class="row"><span>${l}</span><span>${rr}</span></div>`;
   const items = (r.items || [])
     .map((i) => line(`${i.qty}x ${i.name}`, rp(i.price * i.qty)))
@@ -178,7 +213,7 @@ export async function printReceiptSmart(r, settings) {
   const mode = settings.print_mode || "desktop";
   if (mode === "bluetooth") {
     if (!isPrinterConnected()) throw new Error("Printer Bluetooth belum terhubung. Hubungkan di menu Pengaturan.");
-    await writeBytes(buildEscPos(r, settings));
+    await writeBytes(await buildEscPos(r, settings));
     return "bluetooth";
   }
   printDesktop(r, settings);

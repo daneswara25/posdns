@@ -105,6 +105,11 @@ class LoginInput(BaseModel):
     password: str
 
 
+class ChangePasswordInput(BaseModel):
+    current_password: str
+    new_password: str
+
+
 class UserCreate(BaseModel):
     username: str
     password: str
@@ -250,6 +255,17 @@ async def logout(response: Response):
 @api_router.get("/auth/me")
 async def me(user: dict = Depends(get_current_user)):
     return user
+
+
+@api_router.post("/auth/change-password")
+async def change_password(data: ChangePasswordInput, user: dict = Depends(get_current_user)):
+    if len(data.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password baru minimal 6 karakter")
+    record = await db.users.find_one({"id": user["id"]})
+    if not record or not verify_password(data.current_password, record["password_hash"]):
+        raise HTTPException(status_code=400, detail="Password lama salah")
+    await db.users.update_one({"id": user["id"]}, {"$set": {"password_hash": hash_password(data.new_password)}})
+    return {"ok": True}
 
 
 # ---------- Users (Owner/Manager) ----------
