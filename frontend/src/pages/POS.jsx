@@ -36,6 +36,7 @@ export default function POS() {
   const [variantCat, setVariantCat] = useState(null);
   const [custOpen, setCustOpen] = useState(false);
   const [variantNote, setVariantNote] = useState("");
+  const [sessionLines, setSessionLines] = useState([]);
   const [density, setDensity] = useState(() => localStorage.getItem("pos_density") || "sedang");
   const setDens = (d) => { setDensity(d); localStorage.setItem("pos_density", d); };
   const gridClass = POS_GRID[density] || POS_GRID.sedang;
