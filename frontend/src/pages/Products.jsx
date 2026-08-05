@@ -23,6 +23,7 @@ export default function Products() {
   const [products, setProducts] = useState([]);
   const [cats, setCats] = useState([]);
   const [q, setQ] = useState("");
+  const [view, setView] = useViewMode("view-products", "list");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [editId, setEditId] = useState(null);

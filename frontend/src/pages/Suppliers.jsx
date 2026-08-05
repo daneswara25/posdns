@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ViewToggle, useViewMode } from "@/components/ViewToggle";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Truck } from "lucide-react";
+import { Plus, Pencil, Trash2, Truck, Search } from "lucide-react";
 
 const EMPTY = { name: "", phone: "", email: "", address: "" };
 
