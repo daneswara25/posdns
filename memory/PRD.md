@@ -97,6 +97,9 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - ADDED: Tombol kepadatan grid POS (Besar/Sedang/Kecil) di kanan kolom pencarian (`grid-density-toggle`, `density-*`). Pilihan disimpan di localStorage (`pos_density`). Konstanta `POS_GRID` menentukan jumlah kolom per mode. Verified: Besar ~18 tile, Kecil ~49 tile terlihat.
 - CHANGED: `frontend/public/posdns.html` kini menampilkan nama "DANESWARA POS" + logo (di-embed base64 dari paladin.webp, di hero & panel form) + footer. Logo juga disalin ke `public/logo-danes.webp`. File tetap self-contained untuk di-host di domain pribadi.
 
+## Update (2026-06-05) — Bagian 7: Perbaikan logo posdns.html
+- CHANGED: Logo di posdns.html diganti ke logo kuning/gold (`public/logo.png`) yang di-embed base64, dan chip logo dibuat latar gelap (#0f172a) di hero & form agar logo kontras/jelas terlihat. Verified: 2 logo termuat, tampil jelas.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
