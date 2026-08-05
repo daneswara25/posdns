@@ -555,11 +555,97 @@ async def report_monthly(user: dict = Depends(require_roles("Owner", "Manager"))
 async def clear_transactions(user: dict = Depends(require_roles("Owner"))):
     tid = user["tenant_id"]
     result = {}
-    for coll in ["sales", "orders", "held_orders", "activities", "stock_movements"]:
+    for coll in ["sales", "orders", "held_orders", "activities", "stock_movements", "expenses"]:
         r = await db[coll].delete_many({"tenant_id": tid})
         result[coll] = r.deleted_count
     await log_activity(tid, user, "Reset Data Transaksi", "Semua transaksi percobaan dihapus")
     return {"ok": True, "deleted": result}
+
+
+# ---------- Expenses & Profit-Loss ----------
+EXPENSE_CATEGORIES = [
+    "Pembelian Bahan DTF", "Pembelian ATK", "Biaya Operasional",
+    "Jasa Pengambilan Online", "Pembelian Lain-lain",
+]
+
+
+class ExpenseInput(BaseModel):
+    category: str
+    amount: float
+    note: Optional[str] = ""
+    date: Optional[str] = None
+
+
+@api_router.get("/expense-categories")
+async def expense_categories(user: dict = Depends(get_current_user)):
+    return EXPENSE_CATEGORIES
+
+
+@api_router.get("/expenses")
+async def list_expenses(user: dict = Depends(require_roles("Owner", "Manager")),
+                        start: Optional[str] = None, end: Optional[str] = None):
+    tid = user["tenant_id"]
+    items = await db.expenses.find({"tenant_id": tid}, {"_id": 0}).sort("date", -1).to_list(5000)
+    if start:
+        items = [e for e in items if (e.get("date") or "")[:10] >= start]
+    if end:
+        items = [e for e in items if (e.get("date") or "")[:10] <= end]
+    return items
+
+
+@api_router.post("/expenses")
+async def create_expense(data: ExpenseInput, user: dict = Depends(require_roles("Owner", "Manager"))):
+    if data.amount <= 0:
+        raise HTTPException(status_code=400, detail="Nominal harus lebih dari 0")
+    doc = {
+        "id": new_id(), "tenant_id": user["tenant_id"], "category": data.category,
+        "amount": data.amount, "note": data.note or "",
+        "date": (data.date or now_iso())[:10] if data.date else now_iso()[:10],
+        "user_name": user.get("name", ""), "created_at": now_iso(),
+    }
+    await db.expenses.insert_one(doc)
+    await log_activity(user["tenant_id"], user, "Tambah Pengeluaran", f"{data.category} - {data.amount}")
+    return clean(doc)
+
+
+@api_router.delete("/expenses/{eid}")
+async def delete_expense(eid: str, user: dict = Depends(require_roles("Owner", "Manager"))):
+    await db.expenses.delete_one({"id": eid, "tenant_id": user["tenant_id"]})
+    return {"ok": True}
+
+
+@api_router.get("/reports/profit-loss")
+async def report_profit_loss(user: dict = Depends(require_roles("Owner", "Manager")),
+                             start: Optional[str] = None, end: Optional[str] = None):
+    tid = user["tenant_id"]
+    sales = await db.sales.find({"tenant_id": tid, "refunded": {"$ne": True}}, {"_id": 0}).to_list(20000)
+    if start:
+        sales = [s for s in sales if s["created_at"][:10] >= start]
+    if end:
+        sales = [s for s in sales if s["created_at"][:10] <= end]
+    revenue = sum(s["total"] for s in sales)
+    hpp = sum(s.get("cost", 0) for s in sales)
+
+    expenses = await db.expenses.find({"tenant_id": tid}, {"_id": 0}).to_list(5000)
+    if start:
+        expenses = [e for e in expenses if (e.get("date") or "")[:10] >= start]
+    if end:
+        expenses = [e for e in expenses if (e.get("date") or "")[:10] <= end]
+    by_cat = {}
+    for e in expenses:
+        by_cat[e["category"]] = by_cat.get(e["category"], 0) + e["amount"]
+    expense_total = sum(e["amount"] for e in expenses)
+
+    return {
+        "revenue": revenue,
+        "hpp": hpp,
+        "gross_profit": revenue - hpp,
+        "expense_total": expense_total,
+        "expenses_by_category": [{"category": k, "amount": v} for k, v in by_cat.items()],
+        "net_profit": revenue - expense_total,
+        "sales_count": len(sales),
+        "expense_count": len(expenses),
+    }
 
 
 # ---------- Settings ----------

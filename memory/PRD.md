@@ -82,6 +82,13 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - Catatan tampil di: keranjang (📝), struk layar, cetak Desktop/HTML (`.note`), cetak thermal ESC/POS (`* catatan`), dan teks WhatsApp. Cart ops (qty/hapus) direfactor ke `lineId`; resume held-order backfill lineId.
 - Tested E2E: tambah varian + catatan "Sablon logo depan ukuran L" → tampil di keranjang & struk, tersimpan di backend. ✓
 
+## Update (2026-06-05) — Bagian 4: Modul Pengeluaran, Laba Rugi, Stok Minus
+- ADDED: Halaman **Pengeluaran** (`/pengeluaran`, Owner/Manager) — catat pengeluaran dgn 5 kategori (Pembelian Bahan DTF, Pembelian ATK, Biaya Operasional, Jasa Pengambilan Online, Pembelian Lain-lain), nominal, tanggal, catatan; daftar + total + hapus. Backend: `ExpenseInput`, `POST/GET/DELETE /api/expenses`, `GET /api/expense-categories`.
+- ADDED: **Laba Rugi** di halaman Laporan (mengikuti filter periode). Endpoint `GET /api/reports/profit-loss` → revenue, hpp, gross_profit, expense_total, expenses_by_category, net_profit. Rumus headline: **Laba Bersih = Total Penjualan − Total Pengeluaran** (HPP & Laba Kotor ditampilkan sebagai referensi).
+- CHANGED: **Stok minus diizinkan** di POS untuk semua produk (blokir "Stok habis" di frontend dihapus; backend memang sudah izinkan negatif). Stok ≤ 0 ditampilkan merah "(minus)". Diisi kembali via menu Pembelian/terima barang.
+- CHANGED: `clear-transactions` kini juga menghapus koleksi `expenses`.
+- Tested E2E: pengeluaran tercatat, laba rugi akurat (Laba Bersih = Penjualan − Pengeluaran), penjualan menembus stok negatif (93→−7) berhasil. Data tes dibersihkan.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { Receipt, Undo2, FileSpreadsheet, FileText } from "lucide-react";
+import { Receipt, Undo2, FileSpreadsheet, FileText, Scale } from "lucide-react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -23,12 +23,17 @@ export default function Reports() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [trend, setTrend] = useState([]);
+  const [pl, setPl] = useState(null);
 
+  const loadPL = (params) => {
+    api.get("/reports/profit-loss", { params }).then((r) => setPl(r.data));
+  };
   const load = () => {
     const params = {};
     if (start) params.start = start;
     if (end) params.end = end;
     api.get("/reports/sales", { params }).then((r) => setRep(r.data));
+    loadPL(params);
   };
   const loadTrend = (y) => {
     api.get("/reports/monthly", { params: { year: y } }).then((r) => setTrend(r.data.months));
@@ -41,6 +46,7 @@ export default function Reports() {
     const e = `${year}-${String(month).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
     setStart(s); setEnd(e);
     api.get("/reports/sales", { params: { start: s, end: e } }).then((r) => setRep(r.data));
+    loadPL({ start: s, end: e });
     loadTrend(year);
   };
 
@@ -145,6 +151,42 @@ export default function Reports() {
         <div className="rounded-lg border border-border bg-card p-5"><p className="text-xs uppercase tracking-widest text-muted-foreground">Laba Kotor</p><p className="mt-2 font-display text-2xl font-bold text-emerald-600">{rupiah(rep.profit)}</p></div>
         <div className="rounded-lg border border-border bg-card p-5"><p className="text-xs uppercase tracking-widest text-muted-foreground">Jumlah Transaksi</p><p className="mt-2 font-display text-2xl font-bold">{rep.count}</p></div>
       </div>
+
+      {pl && (
+        <div className="rounded-lg border border-border bg-card p-6" data-testid="profit-loss-section">
+          <div className="mb-4 flex items-center gap-2">
+            <Scale className="h-5 w-5 text-primary" />
+            <h3 className="font-display text-lg font-semibold">Laba Rugi {start && end ? `(${start} s/d ${end})` : "(Semua Periode)"}</h3>
+          </div>
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center justify-between py-1">
+              <span className="font-medium">Total Penjualan (Pemasukan)</span>
+              <span className="font-semibold text-emerald-600" data-testid="pl-revenue">{rupiah(pl.revenue)}</span>
+            </div>
+            <div className="rounded-md bg-secondary/40 p-3">
+              <div className="mb-1 flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
+                <span>Pengeluaran per Kategori</span>
+                <span>Total: {rupiah(pl.expense_total)}</span>
+              </div>
+              {pl.expenses_by_category.length === 0 ? (
+                <p className="py-1 text-xs text-muted-foreground">Belum ada pengeluaran pada periode ini.</p>
+              ) : (
+                pl.expenses_by_category.map((e) => (
+                  <div key={e.category} className="flex items-center justify-between py-0.5">
+                    <span className="text-muted-foreground">{e.category}</span>
+                    <span className="text-destructive">- {rupiah(e.amount)}</span>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="flex items-center justify-between border-t border-border pt-3">
+              <span className="font-display text-base font-bold">Laba Bersih</span>
+              <span className={`font-display text-xl font-bold ${pl.net_profit >= 0 ? "text-emerald-600" : "text-destructive"}`} data-testid="pl-net-profit">{rupiah(pl.net_profit)}</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground">Laba Bersih = Total Penjualan − Total Pengeluaran. Referensi: Modal barang terjual (HPP) {rupiah(pl.hpp)}, Laba Kotor {rupiah(pl.gross_profit)}.</p>
+          </div>
+        </div>
+      )}
 
       <div className="rounded-lg border border-border bg-card p-5">
         <div className="mb-3 flex items-center justify-between">

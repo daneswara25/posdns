@@ -130,7 +130,6 @@ export default function POS() {
   };
 
   const addToCart = (p, note = "") => {
-    if (p.stock <= 0) return toast.error("Stok habis");
     const lineId = `${p.id}|${note}`;
     setCart((c) => {
       const ex = c.find((x) => x.lineId === lineId);
@@ -305,9 +304,8 @@ export default function POS() {
                     key={p.id}
                     whileTap={{ scale: 0.96 }}
                     onClick={() => addToCart(p)}
-                    disabled={p.stock <= 0}
                     data-testid={`pos-product-${p.id}`}
-                    className="flex flex-col rounded-lg border border-border bg-card p-3 text-left transition-colors duration-200 hover:border-primary disabled:opacity-40"
+                    className="flex flex-col rounded-lg border border-border bg-card p-3 text-left transition-colors duration-200 hover:border-primary"
                   >
                     <div className="mb-2 aspect-square overflow-hidden rounded-md bg-secondary flex items-center justify-center">
                       {p.image ? (
@@ -318,7 +316,7 @@ export default function POS() {
                     </div>
                     <p className="line-clamp-2 text-sm font-medium">{p.name}</p>
                     <p className="mt-1 font-display font-bold text-primary">{rupiah(p.price)}</p>
-                    <p className="text-xs text-muted-foreground">Stok: {p.stock}</p>
+                    <p className={`text-xs ${p.stock <= 0 ? "font-semibold text-destructive" : "text-muted-foreground"}`}>Stok: {p.stock}</p>
                   </motion.button>
                 ))}
                 {filtered.length === 0 && <p className="col-span-full text-sm text-muted-foreground">Tidak ada produk.</p>}
@@ -488,16 +486,15 @@ export default function POS() {
                   <button
                     key={p.id}
                     onClick={() => addToCart(p, variantNote.trim())}
-                    disabled={p.stock <= 0}
                     data-testid={`variant-item-${p.id}`}
-                    className="flex w-full items-center gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:border-primary disabled:opacity-40"
+                    className="flex w-full items-center gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:border-primary"
                   >
                     <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-secondary flex items-center justify-center">
                       {p.image ? <img src={p.image} alt="" className="h-full w-full object-cover" /> : <ShoppingCart className="h-5 w-5 text-muted-foreground" />}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{stripVariant(p.name, variantCat?.name)}</p>
-                      <p className="text-xs text-muted-foreground">Stok: {p.stock}{p.stock <= 0 ? " · Habis" : ""}</p>
+                      <p className={`text-xs ${p.stock <= 0 ? "font-semibold text-destructive" : "text-muted-foreground"}`}>Stok: {p.stock}{p.stock <= 0 ? " (minus)" : ""}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-display font-bold text-primary">{rupiah(p.price)}</p>
