@@ -100,6 +100,17 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 ## Update (2026-06-05) — Bagian 7: Perbaikan logo posdns.html
 - CHANGED: Logo di posdns.html diganti ke logo kuning/gold (`public/logo.png`) yang di-embed base64, dan chip logo dibuat latar gelap (#0f172a) di hero & form agar logo kontras/jelas terlihat. Verified: 2 logo termuat, tampil jelas.
 
+## Update (2026-06-06) — Fork lanjutan
+- FIXED (P0): Bug catatan varian di POS. Varian yang dipilih kini ditampung sementara (tempItems) di dalam dialog; catatan diterapkan ke SEMUA varian saat tombol "Selesai" diklik (commitVariants dipanggil eksplisit di onClick karena Radix Dialog terkontrol tidak memicu onOpenChange saat close programatik). Verified iteration_4 (100%).
+- ADDED: Catatan pada item keranjang POS bisa diedit ulang & disimpan (tombol pensil -> textarea -> Simpan/Batal). saveEditNote me-rekey lineId & merge bila bentrok.
+- ADDED (P1): Pengingat Stok Minus di Dashboard (kartu merah, data-testid minus-stock-card) — backend GET /api/dashboard kini mengembalikan minus_stock & minus_stock_count.
+- CHANGED: posdns.html — hapus teks eyebrow "Masuk" di bawah logo.
+- ADDED: Kolom pencarian di semua halaman daftar yang belum punya (Kategori, Supplier, Pengguna, Pesanan, Pembelian, Inventory, Pengeluaran). Produk & Pelanggan sudah ada.
+- ADDED: Toggle tampilan (Kartu Besar / Kartu Kecil / List) tersimpan di localStorage pada halaman master data (Produk default 'list', Pelanggan/Kategori/Supplier default 'besar'). Komponen baru: `components/ViewToggle.jsx`.
+- ADDED: Pemisah ribuan otomatis gaya Indonesia (1.500.000) pada SEMUA input angka via komponen baru `components/NumberInput.jsx` (emit angka murni). Diterapkan di Produk, Pengeluaran, Orders, Purchases, Inventory, POS (diskon/bayar/deposit).
+- Verified iteration_5 & iteration_6 (2 crash P0 diperbaiki: Products.jsx useViewMode, Suppliers.jsx import) — semua skenario 100% pass.
+
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
