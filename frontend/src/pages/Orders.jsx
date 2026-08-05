@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { NumberInput } from "@/components/NumberInput";
 import { toast } from "sonner";
-import { CheckCircle2, Clock, Trash2, Printer } from "lucide-react";
+import { CheckCircle2, Clock, Trash2, Printer, Search } from "lucide-react";
 
 const METHODS = ["Tunai", "Kartu", "QRIS", "E-Wallet"];
 
@@ -17,6 +18,7 @@ export default function Orders() {
   const [settle, setSettle] = useState(null);
   const [method, setMethod] = useState("Tunai");
   const [paid, setPaid] = useState("");
+  const [q, setQ] = useState("");
 
   const load = () => { api.get("/orders").then((r) => setList(r.data)); };
   useEffect(() => {
@@ -44,6 +46,11 @@ export default function Orders() {
   };
   const del = async (id) => { if (!window.confirm("Hapus pesanan?")) return; await api.delete(`/orders/${id}`); load(); };
 
+  const term = q.trim().toLowerCase();
+  const filtered = term
+    ? list.filter((o) => `${o.order_number} ${o.customer_name || ""} ${o.status}`.toLowerCase().includes(term))
+    : list;
+
   return (
     <div className="space-y-6">
       <div>
@@ -52,8 +59,13 @@ export default function Orders() {
         <p className="mt-1 text-sm text-muted-foreground">Buat pesanan dengan uang muka (DP) dari halaman Kasir POS. Lunasi di sini saat pesanan selesai.</p>
       </div>
 
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari no. pesanan, nama, atau status..." className="pl-10" data-testid="order-search" />
+      </div>
+
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        {list.map((o) => (
+        {filtered.map((o) => (
           <div key={o.id} className="rounded-lg border border-border bg-card p-4" data-testid={`order-${o.id}`}>
             <div className="flex items-start justify-between">
               <div>
@@ -70,13 +82,14 @@ export default function Orders() {
               <div className="flex justify-between font-semibold"><span>Sisa</span><span className={o.remaining > 0 ? "text-orange-600" : ""}>{rupiah(o.remaining)}</span></div>
             </div>
             <div className="mt-3 flex gap-2">
-              {o.status !== "Selesai" && <Button className="flex-1" onClick={() => { setSettle(o); setPaid(String(o.remaining)); }} data-testid={`complete-order-${o.id}`}>Selesaikan & Lunasi</Button>}
+              {o.status !== "Selesai" && <Button className="flex-1" onClick={() => { setSettle(o); setPaid(o.remaining); }} data-testid={`complete-order-${o.id}`}>Selesaikan & Lunasi</Button>}
               <Button variant="outline" size="sm" className="gap-1" onClick={() => printNota(o)} data-testid={`reprint-order-${o.id}`}><Printer className="h-4 w-4" /> Cetak Nota</Button>
               <Button variant="ghost" size="icon" onClick={() => del(o.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
             </div>
           </div>
         ))}
         {list.length === 0 && <p className="text-sm text-muted-foreground">Belum ada pesanan.</p>}
+        {list.length > 0 && filtered.length === 0 && <p className="text-sm text-muted-foreground">Tidak ada pesanan cocok.</p>}
       </div>
 
       <Dialog open={!!settle} onOpenChange={() => setSettle(null)}>
@@ -88,7 +101,7 @@ export default function Orders() {
                 <button key={m} onClick={() => setMethod(m)} className={`rounded-md border py-3 text-sm font-semibold transition-colors duration-200 ${method === m ? "border-primary bg-accent text-accent-foreground" : "border-border"}`} data-testid={`settle-method-${m}`}>{m}</button>
               ))}
             </div>
-            <div className="space-y-1"><Label>Nominal Pelunasan</Label><Input type="number" value={paid} onChange={(e) => setPaid(e.target.value)} className="h-12 text-lg" data-testid="settle-paid-input" /></div>
+            <div className="space-y-1"><Label>Nominal Pelunasan</Label><NumberInput value={paid} onValueChange={setPaid} className="h-12 text-lg" data-testid="settle-paid-input" /></div>
           </div>
           <DialogFooter><Button onClick={complete} className="w-full" data-testid="settle-confirm-button">Konfirmasi Selesai</Button></DialogFooter>
         </DialogContent>

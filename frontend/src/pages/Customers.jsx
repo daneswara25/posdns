@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ViewToggle, useViewMode } from "@/components/ViewToggle";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, History, User, Search } from "lucide-react";
 
@@ -16,6 +17,7 @@ export default function Customers() {
   const [form, setForm] = useState(EMPTY);
   const [editId, setEditId] = useState(null);
   const [history, setHistory] = useState(null);
+  const [view, setView] = useViewMode("view-customers", "besar");
 
   const load = () => { api.get("/customers").then((r) => setList(r.data)); };
   useEffect(load, []);
@@ -51,9 +53,12 @@ export default function Customers() {
         <Button onClick={() => { setForm(EMPTY); setEditId(null); setOpen(true); }} className="gap-2" data-testid="add-customer-button"><Plus className="h-4 w-4" /> Tambah</Button>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama atau nomor telepon..." className="pl-10" data-testid="customer-search" />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama atau nomor telepon..." className="pl-10" data-testid="customer-search" />
+        </div>
+        <ViewToggle mode={view} onChange={setView} />
       </div>
       <p className="text-xs text-muted-foreground" data-testid="customer-count">
         {term ? `${filtered.length} hasil` : `${list.length} pelanggan`}{filtered.length > 200 ? " · menampilkan 200 teratas, persempit pencarian" : ""}

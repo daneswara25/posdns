@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, UserCog } from "lucide-react";
+import { Plus, Pencil, Trash2, UserCog, Search } from "lucide-react";
 
 const ROLES = ["Owner", "Manager", "Kasir", "Gudang"];
 const roleTint = {
@@ -22,6 +22,7 @@ export default function Users() {
   const { user } = useAuth();
   const isOwner = user?.role === "Owner";
   const [users, setUsers] = useState([]);
+  const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ username: "", password: "", name: "", role: "Kasir", active: true });
   const [editId, setEditId] = useState(null);
@@ -60,6 +61,12 @@ export default function Users() {
     }
   };
 
+  const term = q.trim().toLowerCase();
+  const filtered = term
+    ? users.filter((u) => `${u.name} ${u.username} ${u.role}`.toLowerCase().includes(term))
+    : users;
+
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -70,13 +77,18 @@ export default function Users() {
         <Button onClick={openNew} className="gap-2" data-testid="add-user-button"><Plus className="h-4 w-4" /> Tambah Pengguna</Button>
       </div>
 
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama, username, atau peran..." className="pl-10" data-testid="user-search" />
+      </div>
+
       <div className="overflow-hidden rounded-lg border border-border">
         <table className="w-full text-sm">
           <thead className="bg-secondary text-xs uppercase text-muted-foreground">
             <tr><th className="px-4 py-3 text-left">Nama</th><th className="px-4 py-3 text-left">Username</th><th className="px-4 py-3 text-left">Peran</th><th className="px-4 py-3 text-left">Status</th><th></th></tr>
           </thead>
           <tbody>
-            {users.map((u) => (
+            {filtered.map((u) => (
               <tr key={u.id} className="border-t border-border" data-testid={`user-row-${u.id}`}>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">

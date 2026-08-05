@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { NumberInput } from "@/components/NumberInput";
 import { toast } from "sonner";
-import { Plus, Trash2, Wallet, Receipt } from "lucide-react";
+import { Plus, Trash2, Wallet, Receipt, Search } from "lucide-react";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const EMPTY = { category: "", amount: "", note: "", date: today() };
@@ -17,6 +18,7 @@ export default function Expenses() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [q, setQ] = useState("");
 
   const load = () => { api.get("/expenses").then((r) => setList(r.data)); };
   useEffect(() => {
@@ -24,7 +26,11 @@ export default function Expenses() {
     api.get("/expense-categories").then((r) => setCats(r.data));
   }, []);
 
-  const total = list.reduce((a, e) => a + e.amount, 0);
+  const term = q.trim().toLowerCase();
+  const filtered = term
+    ? list.filter((e) => `${e.category} ${e.note || ""} ${e.date}`.toLowerCase().includes(term))
+    : list;
+  const total = filtered.reduce((a, e) => a + e.amount, 0);
 
   const save = async () => {
     if (!form.category) return toast.error("Pilih kategori");
@@ -55,6 +61,11 @@ export default function Expenses() {
         <Button onClick={() => { setForm(EMPTY); setOpen(true); }} className="gap-2" data-testid="add-expense-button">
           <Plus className="h-4 w-4" /> Tambah Pengeluaran
         </Button>
+      </div>
+
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari kategori, catatan, atau tanggal..." className="pl-10" data-testid="expense-search" />
       </div>
 
       <div className="rounded-lg border border-border bg-card p-5">
@@ -90,7 +101,7 @@ export default function Expenses() {
                 </td>
               </tr>
             ))}
-            {list.length === 0 && <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">Belum ada pengeluaran.</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">{term ? "Tidak ada pengeluaran cocok." : "Belum ada pengeluaran."}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -109,7 +120,7 @@ export default function Expenses() {
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1"><Label>Nominal (Rp)</Label><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} data-testid="expense-amount-input" /></div>
+              <div className="space-y-1"><Label>Nominal (Rp)</Label><NumberInput value={form.amount} onValueChange={(v) => setForm({ ...form, amount: v })} data-testid="expense-amount-input" /></div>
               <div className="space-y-1"><Label>Tanggal</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} data-testid="expense-date-input" /></div>
             </div>
             <div className="space-y-1"><Label>Catatan (opsional)</Label><Input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="cth: Beli tinta DTF 1L" data-testid="expense-note-input" /></div>

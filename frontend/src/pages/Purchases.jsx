@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { NumberInput } from "@/components/NumberInput";
 import { toast } from "sonner";
-import { Plus, PackageCheck, Trash2, ClipboardList } from "lucide-react";
+import { Plus, PackageCheck, Trash2, ClipboardList, Search } from "lucide-react";
 
 export default function Purchases() {
   const [list, setList] = useState([]);
@@ -16,6 +17,7 @@ export default function Purchases() {
   const [supplierId, setSupplierId] = useState("");
   const [note, setNote] = useState("");
   const [items, setItems] = useState([]);
+  const [q, setQ] = useState("");
 
   const load = () => {
     api.get("/purchases").then((r) => setList(r.data));
@@ -28,6 +30,10 @@ export default function Purchases() {
   const setItem = (idx, patch) => setItems(items.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
   const removeItem = (idx) => setItems(items.filter((_, i) => i !== idx));
   const total = items.reduce((s, i) => s + Number(i.qty || 0) * Number(i.cost || 0), 0);
+  const term = q.trim().toLowerCase();
+  const filtered = term
+    ? list.filter((po) => `${po.po_number} ${po.supplier_name || ""} ${po.status}`.toLowerCase().includes(term))
+    : list;
 
   const save = async () => {
     const valid = items.filter((i) => i.product_id && i.qty > 0);
@@ -59,13 +65,18 @@ export default function Purchases() {
         <Button onClick={() => { setItems([{ product_id: "", name: "", qty: 1, cost: 0 }]); setOpen(true); }} className="gap-2" data-testid="add-po-button"><Plus className="h-4 w-4" /> Buat PO</Button>
       </div>
 
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari no. PO, supplier, atau status..." className="pl-10" data-testid="po-search" />
+      </div>
+
       <div className="overflow-hidden rounded-lg border border-border">
         <table className="w-full text-sm">
           <thead className="bg-secondary text-xs uppercase text-muted-foreground">
             <tr><th className="px-4 py-3 text-left">No. PO</th><th className="px-4 py-3 text-left">Supplier</th><th className="px-4 py-3 text-right">Total</th><th className="px-4 py-3 text-left">Status</th><th></th></tr>
           </thead>
           <tbody>
-            {list.map((po) => (
+            {filtered.map((po) => (
               <tr key={po.id} className="border-t border-border" data-testid={`po-row-${po.id}`}>
                 <td className="px-4 py-3 font-medium">{po.po_number}</td>
                 <td className="px-4 py-3 text-muted-foreground">{po.supplier_name || "—"}</td>
@@ -76,7 +87,7 @@ export default function Purchases() {
                 </td>
               </tr>
             ))}
-            {list.length === 0 && <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">Belum ada PO.</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">{term ? "Tidak ada PO cocok." : "Belum ada PO."}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -102,8 +113,8 @@ export default function Purchases() {
                       <SelectContent>{products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="col-span-2"><Input type="number" placeholder="Qty" value={it.qty} onChange={(e) => setItem(idx, { qty: e.target.value })} data-testid={`po-item-qty-${idx}`} /></div>
-                  <div className="col-span-3"><Input type="number" placeholder="Modal" value={it.cost} onChange={(e) => setItem(idx, { cost: e.target.value })} /></div>
+                  <div className="col-span-2"><NumberInput placeholder="Qty" value={it.qty} onValueChange={(v) => setItem(idx, { qty: v })} data-testid={`po-item-qty-${idx}`} /></div>
+                  <div className="col-span-3"><NumberInput placeholder="Modal" value={it.cost} onValueChange={(v) => setItem(idx, { cost: v })} /></div>
                   <div className="col-span-1"><Button variant="ghost" size="icon" onClick={() => removeItem(idx)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>
                 </div>
               ))}

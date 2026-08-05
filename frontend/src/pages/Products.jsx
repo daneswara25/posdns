@@ -11,6 +11,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { NumberInput } from "@/components/NumberInput";
+import { ViewToggle, useViewMode } from "@/components/ViewToggle";
 import { Plus, Pencil, Trash2, Search, Package } from "lucide-react";
 
 const EMPTY = { name: "", sku: "", barcode: "", category_id: "", price: "", cost: "", stock: "", min_stock: 5, unit: "pcs", image: "", active: true };
@@ -104,11 +106,15 @@ export default function Products() {
         )}
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari produk..." className="pl-10" data-testid="product-search" />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari produk..." className="pl-10" data-testid="product-search" />
+        </div>
+        <ViewToggle mode={view} onChange={setView} />
       </div>
 
+      {view === "list" && (
       <div className="overflow-hidden rounded-lg border border-border">
         <table className="w-full text-sm">
           <thead className="bg-secondary text-xs uppercase tracking-wider text-muted-foreground">
@@ -155,6 +161,34 @@ export default function Products() {
           </tbody>
         </table>
       </div>
+      )}
+
+      {view !== "list" && (
+        <div className={`grid gap-3 ${view === "besar" ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" : "grid-cols-3 sm:grid-cols-4 lg:grid-cols-6"}`} data-testid="product-grid">
+          {filtered.map((p) => (
+            <div key={p.id} className="flex flex-col overflow-hidden rounded-lg border border-border bg-card" data-testid={`product-card-${p.id}`}>
+              <div className="aspect-square w-full overflow-hidden bg-secondary">
+                {p.image ? <img src={p.image} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center"><Package className="h-6 w-6 text-muted-foreground" /></div>}
+              </div>
+              <div className={`flex flex-1 flex-col ${view === "besar" ? "p-3" : "p-2"}`}>
+                <p className={`truncate font-medium ${view === "besar" ? "text-sm" : "text-xs"}`}>{p.name}</p>
+                <p className="truncate text-[11px] text-muted-foreground">{catName(p.category_id)}</p>
+                <div className="mt-1 flex items-center justify-between">
+                  <span className={`font-display font-bold text-primary ${view === "besar" ? "text-sm" : "text-xs"}`}>{rupiah(p.price)}</span>
+                  <span className={`text-[11px] ${p.stock <= p.min_stock ? "font-semibold text-orange-600" : "text-muted-foreground"}`}>{p.stock} {p.unit}</span>
+                </div>
+                {canEdit && (
+                  <div className="mt-2 flex gap-1">
+                    <Button variant="outline" size="sm" className="h-7 flex-1 px-2" onClick={() => openEdit(p)}><Pencil className="h-3 w-3" /></Button>
+                    <Button variant="outline" size="sm" className="h-7 flex-1 px-2" onClick={() => del(p.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+          {filtered.length === 0 && <p className="col-span-full py-10 text-center text-sm text-muted-foreground">Belum ada produk.</p>}
+        </div>
+      )}
 
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setTimeout(() => { document.body.style.pointerEvents = ""; }, 100); }}>
         <DialogContent className="max-h-[90vh] overflow-y-auto" onCloseAutoFocus={() => { document.body.style.pointerEvents = ""; }} data-testid="product-dialog">
@@ -176,10 +210,10 @@ export default function Products() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1"><Label>Harga Jual</Label><Input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} data-testid="product-price-input" /></div>
-            <div className="space-y-1"><Label>Harga Modal <span className="text-muted-foreground">(opsional)</span></Label><Input type="number" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} placeholder="Boleh dikosongkan" /></div>
-            <div className="space-y-1"><Label>Stok</Label><Input type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} data-testid="product-stock-input" /></div>
-            <div className="space-y-1"><Label>Min. Stok</Label><Input type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: e.target.value })} /></div>
+            <div className="space-y-1"><Label>Harga Jual</Label><NumberInput value={form.price} onValueChange={(v) => setForm({ ...form, price: v })} data-testid="product-price-input" /></div>
+            <div className="space-y-1"><Label>Harga Modal <span className="text-muted-foreground">(opsional)</span></Label><NumberInput value={form.cost} onValueChange={(v) => setForm({ ...form, cost: v })} placeholder="Boleh dikosongkan" /></div>
+            <div className="space-y-1"><Label>Stok</Label><NumberInput value={form.stock} onValueChange={(v) => setForm({ ...form, stock: v })} data-testid="product-stock-input" /></div>
+            <div className="space-y-1"><Label>Min. Stok</Label><NumberInput value={form.min_stock} onValueChange={(v) => setForm({ ...form, min_stock: v })} /></div>
             <div className="space-y-1"><Label>Satuan</Label><Input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} /></div>
             <div className="col-span-2 space-y-2">
               <Label>Gambar Produk <span className="text-muted-foreground">(otomatis dikompres)</span></Label>

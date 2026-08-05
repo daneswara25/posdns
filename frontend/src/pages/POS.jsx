@@ -6,6 +6,7 @@ import { printReceiptSmart } from "@/lib/printer";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/NumberInput";
 import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -205,7 +206,7 @@ export default function POS() {
 
   const openPay = () => {
     if (cart.length === 0) return toast.error("Keranjang masih kosong");
-    setPaid(method === "Tunai" ? "" : String(total));
+    setPaid(method === "Tunai" ? "" : total);
     setPayOpen(true);
   };
 
@@ -542,10 +543,9 @@ export default function POS() {
           <div className="border-t border-border p-4">
             <div className="mb-3 flex items-center gap-2">
               <Label className="text-xs whitespace-nowrap">Diskon (Rp)</Label>
-              <Input
-                type="number"
+              <NumberInput
                 value={discount}
-                onChange={(e) => setDiscount(e.target.value)}
+                onValueChange={setDiscount}
                 className="h-9"
                 data-testid="pos-discount-input"
               />
@@ -639,7 +639,7 @@ export default function POS() {
                 {METHODS.map((m) => (
                   <button
                     key={m}
-                    onClick={() => { setMethod(m); setPaid(m === "Tunai" ? "" : String(total)); }}
+                    onClick={() => { setMethod(m); setPaid(m === "Tunai" ? "" : total); }}
                     className={`rounded-md border py-3 text-sm font-semibold transition-colors duration-200 ${method === m ? "border-primary bg-accent text-accent-foreground" : "border-border"}`}
                     data-testid={`pay-method-${m}`}
                   >
@@ -651,10 +651,10 @@ export default function POS() {
             {method === "Tunai" && (
               <div>
                 <Label>Nominal Diterima</Label>
-                <Input type="number" value={paid} onChange={(e) => setPaid(e.target.value)} className="mt-1 h-12 text-lg" data-testid="pay-cash-input" />
+                <NumberInput value={paid} onValueChange={setPaid} className="mt-1 h-12 text-lg" data-testid="pay-cash-input" />
                 <div className="mt-2 flex flex-wrap gap-2">
                   {[total, 50000, 100000, 200000].map((v, idx) => (
-                    <button key={idx} onClick={() => setPaid(String(v))} className="rounded-md bg-secondary px-3 py-1.5 text-xs font-medium">
+                    <button key={idx} onClick={() => setPaid(v)} className="rounded-md bg-secondary px-3 py-1.5 text-xs font-medium">
                       {rupiah(v)}
                     </button>
                   ))}

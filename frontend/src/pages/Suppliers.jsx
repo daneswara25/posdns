@@ -14,6 +14,8 @@ export default function Suppliers() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [editId, setEditId] = useState(null);
+  const [q, setQ] = useState("");
+  const [view, setView] = useViewMode("view-suppliers", "besar");
 
   const load = () => { api.get("/suppliers").then((r) => setList(r.data)); };
   useEffect(load, []);
@@ -39,21 +41,46 @@ export default function Suppliers() {
         <Button onClick={() => { setForm(EMPTY); setEditId(null); setOpen(true); }} className="gap-2" data-testid="add-supplier-button"><Plus className="h-4 w-4" /> Tambah</Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {list.map((s) => (
-          <div key={s.id} className="rounded-lg border border-border bg-card p-4" data-testid={`supplier-${s.id}`}>
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-secondary"><Truck className="h-5 w-5" /></div>
-                <div><p className="font-semibold">{s.name}</p><p className="text-xs text-muted-foreground">{s.phone || "—"}</p></div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari supplier atau telepon..." className="pl-10" data-testid="supplier-search" />
+        </div>
+        <ViewToggle mode={view} onChange={setView} />
+      </div>
+
+      <div className={
+        view === "list" ? "space-y-2"
+        : view === "kecil" ? "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+        : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+      } data-testid="supplier-list">
+        {list.filter((s) => `${s.name} ${s.phone || ""}`.toLowerCase().includes(q.trim().toLowerCase())).map((s) => (
+          view === "list" ? (
+            <div key={s.id} className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-2.5" data-testid={`supplier-${s.id}`}>
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary"><Truck className="h-4 w-4" /></div>
+                <div className="min-w-0"><p className="truncate font-medium">{s.name}</p><p className="truncate text-xs text-muted-foreground">{s.phone || "—"}{s.address ? ` · ${s.address}` : ""}</p></div>
               </div>
-              <div className="flex gap-1">
+              <div className="flex shrink-0 gap-1">
                 <Button variant="ghost" size="icon" onClick={() => { setForm(s); setEditId(s.id); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                 <Button variant="ghost" size="icon" onClick={() => del(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
               </div>
             </div>
-            {s.address && <p className="mt-2 text-xs text-muted-foreground">{s.address}</p>}
+          ) : (
+          <div key={s.id} className={`rounded-lg border border-border bg-card ${view === "kecil" ? "p-3" : "p-4"}`} data-testid={`supplier-${s.id}`}>
+            <div className="flex items-start justify-between">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className={`flex shrink-0 items-center justify-center rounded-md bg-secondary ${view === "kecil" ? "h-8 w-8" : "h-10 w-10"}`}><Truck className={view === "kecil" ? "h-4 w-4" : "h-5 w-5"} /></div>
+                <div className="min-w-0"><p className="truncate font-semibold">{s.name}</p><p className="truncate text-xs text-muted-foreground">{s.phone || "—"}</p></div>
+              </div>
+              <div className="flex shrink-0 gap-1">
+                <Button variant="ghost" size="icon" onClick={() => { setForm(s); setEditId(s.id); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => del(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+              </div>
+            </div>
+            {s.address && view !== "kecil" && <p className="mt-2 text-xs text-muted-foreground">{s.address}</p>}
           </div>
+          )
         ))}
         {list.length === 0 && <p className="text-sm text-muted-foreground">Belum ada supplier.</p>}
       </div>

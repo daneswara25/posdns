@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { NumberInput } from "@/components/NumberInput";
 import { toast } from "sonner";
-import { ArrowDownCircle, ArrowUpCircle, SlidersHorizontal, ClipboardList } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, SlidersHorizontal, ClipboardList, Search } from "lucide-react";
 
 const TYPES = ["Masuk", "Keluar", "Penyesuaian", "Opname"];
 const badge = {
@@ -21,6 +22,7 @@ export default function Inventory() {
   const [moves, setMoves] = useState([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ product_id: "", type: "Masuk", qty: "", note: "" });
+  const [q, setQ] = useState("");
 
   const load = () => {
     api.get("/products").then((r) => setProducts(r.data));
@@ -41,6 +43,10 @@ export default function Inventory() {
     }
   };
 
+  const term = q.trim().toLowerCase();
+  const fProducts = term ? products.filter((p) => p.name.toLowerCase().includes(term)) : products;
+  const fMoves = term ? moves.filter((m) => (m.product_name || "").toLowerCase().includes(term)) : moves;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -53,11 +59,16 @@ export default function Inventory() {
         </Button>
       </div>
 
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari produk..." className="pl-10" data-testid="inventory-search" />
+      </div>
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="rounded-lg border border-border bg-card p-5 lg:col-span-1">
           <h3 className="mb-3 font-display font-semibold">Stok Produk</h3>
           <div className="max-h-[60vh] space-y-2 overflow-y-auto">
-            {products.map((p) => (
+            {fProducts.map((p) => (
               <div key={p.id} className="flex items-center justify-between rounded-md bg-secondary px-3 py-2 text-sm">
                 <span className="font-medium">{p.name}</span>
                 <span className={p.stock <= p.min_stock ? "font-semibold text-orange-600" : "font-semibold"}>{p.stock} {p.unit}</span>
@@ -77,7 +88,7 @@ export default function Inventory() {
                 <tr><th className="py-2 text-left">Produk</th><th className="py-2 text-left">Tipe</th><th className="py-2 text-right">Perubahan</th><th className="py-2 text-right">Waktu</th></tr>
               </thead>
               <tbody>
-                {moves.map((m) => (
+                {fMoves.map((m) => (
                   <tr key={m.id} className="border-t border-border" data-testid={`stock-move-${m.id}`}>
                     <td className="py-2">{m.product_name}</td>
                     <td className="py-2"><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${badge[m.type]}`}>{m.type}</span></td>
@@ -85,7 +96,7 @@ export default function Inventory() {
                     <td className="py-2 text-right text-xs text-muted-foreground">{new Date(m.created_at).toLocaleString("id-ID")}</td>
                   </tr>
                 ))}
-                {moves.length === 0 && <tr><td colSpan={4} className="py-8 text-center text-muted-foreground">Belum ada pergerakan stok.</td></tr>}
+                {fMoves.length === 0 && <tr><td colSpan={4} className="py-8 text-center text-muted-foreground">Belum ada pergerakan stok.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -112,7 +123,7 @@ export default function Inventory() {
             </div>
             <div className="space-y-1">
               <Label>{form.type === "Opname" ? "Stok Akhir (aktual)" : "Jumlah"}</Label>
-              <Input type="number" value={form.qty} onChange={(e) => setForm({ ...form, qty: e.target.value })} data-testid="stock-qty-input" />
+              <NumberInput value={form.qty} onValueChange={(v) => setForm({ ...form, qty: v })} data-testid="stock-qty-input" />
             </div>
             <div className="space-y-1"><Label>Catatan</Label><Input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></div>
           </div>
