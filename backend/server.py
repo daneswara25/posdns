@@ -484,6 +484,7 @@ async def dashboard(user: dict = Depends(get_current_user)):
     today_profit = sum(s.get("profit", 0) for s in today_sales)
     products = await db.products.find({"tenant_id": tid}, {"_id": 0}).to_list(2000)
     low_stock = [p for p in products if p.get("stock", 0) <= p.get("min_stock", 5)]
+    minus_stock = [p for p in products if p.get("stock", 0) < 0]
     # last 7 days
     series = []
     for d in range(6, -1, -1):
@@ -503,6 +504,7 @@ async def dashboard(user: dict = Depends(get_current_user)):
         "today_profit": today_profit, "total_revenue": total_revenue,
         "total_transactions": len(sales), "product_count": len(products),
         "low_stock_count": len(low_stock), "low_stock": low_stock[:10],
+        "minus_stock_count": len(minus_stock), "minus_stock": minus_stock[:20],
         "sales_series": series, "top_products": top_products, "activities": activities,
     }
 

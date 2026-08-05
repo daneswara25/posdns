@@ -16,7 +16,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
 import { toast } from "sonner";
-import { Search, Plus, Minus, Trash2, X, ArrowLeft, ShoppingCart, ScanLine, CheckCircle2, PauseCircle, PlayCircle, HandCoins, Copy, MessageCircle, UserPlus, Check, ChevronsUpDown, Grid2x2, Grid3x3, LayoutGrid } from "lucide-react";
+import { Search, Plus, Minus, Trash2, X, ArrowLeft, ShoppingCart, ScanLine, CheckCircle2, PauseCircle, PlayCircle, HandCoins, Copy, MessageCircle, UserPlus, Check, ChevronsUpDown, Grid2x2, Grid3x3, LayoutGrid, Pencil } from "lucide-react";
 
 const METHODS = ["Tunai", "Kartu", "QRIS", "E-Wallet"];
 
@@ -36,6 +36,9 @@ export default function POS() {
   const [variantCat, setVariantCat] = useState(null);
   const [custOpen, setCustOpen] = useState(false);
   const [variantNote, setVariantNote] = useState("");
+  const [tempItems, setTempItems] = useState([]);
+  const [editingLine, setEditingLine] = useState(null);
+  const [editNoteVal, setEditNoteVal] = useState("");
   const [sessionLines, setSessionLines] = useState([]);
   const [density, setDensity] = useState(() => localStorage.getItem("pos_density") || "sedang");
   const setDens = (d) => { setDensity(d); localStorage.setItem("pos_density", d); };
@@ -152,6 +155,48 @@ export default function POS() {
       c.map((x) => (x.lineId === lineId ? { ...x, qty: Math.max(1, x.qty + delta) } : x))
     );
   const removeItem = (lineId) => setCart((c) => c.filter((x) => x.lineId !== lineId));
+
+  const addTemp = (p) =>
+    setTempItems((t) => {
+      const ex = t.find((x) => x.product.id === p.id);
+      if (ex) return t.map((x) => (x.product.id === p.id ? { ...x, qty: x.qty + 1 } : x));
+      return [...t, { product: p, qty: 1 }];
+    });
+  const decTemp = (pid) =>
+    setTempItems((t) => t.map((x) => (x.product.id === pid ? { ...x, qty: x.qty - 1 } : x)).filter((x) => x.qty > 0));
+  const commitVariants = () => {
+    const note = variantNote.trim();
+    if (tempItems.length) {
+      setCart((c) => {
+        let next = [...c];
+        tempItems.forEach(({ product, qty }) => {
+          const lineId = `${product.id}|${note}`;
+          const ex = next.find((x) => x.lineId === lineId);
+          if (ex) next = next.map((x) => (x.lineId === lineId ? { ...x, qty: x.qty + qty } : x));
+          else next = [...next, { lineId, product_id: product.id, name: product.name, price: product.price, cost: product.cost || 0, qty, note }];
+        });
+        return next;
+      });
+    }
+    setTempItems([]);
+    setVariantNote("");
+  };
+  const startEditNote = (i) => { setEditingLine(i.lineId); setEditNoteVal(i.note || ""); };
+  const saveEditNote = (lineId) => {
+    const note = editNoteVal.trim();
+    setCart((c) => {
+      const item = c.find((x) => x.lineId === lineId);
+      if (!item) return c;
+      const newLineId = `${item.product_id}|${note}`;
+      let next = c.filter((x) => x.lineId !== lineId);
+      const ex = next.find((x) => x.lineId === newLineId);
+      if (ex) next = next.map((x) => (x.lineId === newLineId ? { ...x, qty: x.qty + item.qty } : x));
+      else next = [...next, { ...item, lineId: newLineId, note }];
+      return next;
+    });
+    setEditingLine(null);
+    setEditNoteVal("");
+  };
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const taxAmt = ((subtotal - discount) * taxRate) / 100;
@@ -359,7 +404,7 @@ export default function POS() {
                     <motion.button
                       key={tile.id}
                       whileTap={{ scale: 0.96 }}
-                      onClick={() => { setVariantCat(tile); setVariantNote(""); }}                      data-testid={`pos-cat-tile-${tile.id}`}
+                      onClick={() => { setVariantCat(tile); setVariantNote(""); setTempItems([]); }}                      data-testid={`pos-cat-tile-${tile.id}`}
                       className="group relative flex aspect-square flex-col overflow-hidden rounded-md border border-border bg-card text-left transition-colors duration-200 hover:border-primary"
                     >
                       <div className="absolute inset-0 flex items-center justify-center bg-secondary">
@@ -448,12 +493,33 @@ export default function POS() {
                   className="mb-3 rounded-md border border-border p-3"
                   data-testid={`cart-item-${i.product_id}`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium">{i.name}</p>
-                      {i.note && <p className="mt-0.5 text-xs italic text-muted-foreground">📝 {i.note}</p>}
+                      {editingLine === i.lineId ? (
+                        <div className="mt-1.5 space-y-1.5">
+                          <textarea
+                            value={editNoteVal}
+                            onChange={(e) => setEditNoteVal(e.target.value)}
+                            rows={2}
+                            autoFocus
+                            placeholder="Tulis catatan..."
+                            data-testid={`cart-note-edit-${i.product_id}`}
+                            className="w-full resize-none rounded-md border border-input bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
+                          />
+                          <div className="flex gap-1.5">
+                            <button onClick={() => saveEditNote(i.lineId)} className="rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground" data-testid={`cart-note-save-${i.product_id}`}>Simpan</button>
+                            <button onClick={() => { setEditingLine(null); setEditNoteVal(""); }} className="rounded-md bg-secondary px-2.5 py-1 text-xs font-medium" data-testid={`cart-note-cancel-${i.product_id}`}>Batal</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button onClick={() => startEditNote(i)} className="mt-0.5 flex max-w-full items-center gap-1 text-left text-xs italic text-muted-foreground hover:text-foreground" data-testid={`cart-note-btn-${i.product_id}`}>
+                          <Pencil className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{i.note ? i.note : "Tambah catatan"}</span>
+                        </button>
+                      )}
                     </div>
-                    <button onClick={() => removeItem(i.lineId)} className="text-destructive" data-testid={`cart-remove-${i.product_id}`}>
+                    <button onClick={() => removeItem(i.lineId)} className="shrink-0 text-destructive" data-testid={`cart-remove-${i.product_id}`}>
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
@@ -501,7 +567,7 @@ export default function POS() {
       </div>
 
       {/* variant picker dialog */}
-      <Dialog open={!!variantCat} onOpenChange={(o) => { if (!o) { setVariantCat(null); setTimeout(() => { document.body.style.pointerEvents = ""; }, 100); } }}>
+      <Dialog open={!!variantCat} onOpenChange={(o) => { if (!o) { commitVariants(); setVariantCat(null); setTimeout(() => { document.body.style.pointerEvents = ""; }, 100); } }}>
         <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden p-0 sm:max-w-lg" onCloseAutoFocus={() => { document.body.style.pointerEvents = ""; }} data-testid="variant-dialog">
           <DialogHeader className="shrink-0 border-b border-border px-5 pb-3 pt-5">
             <DialogTitle className="font-display">{variantCat?.name}</DialogTitle>
@@ -510,26 +576,33 @@ export default function POS() {
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3">
             <div className="space-y-2">
               {variantCat?.items.map((p) => {
-                const inCart = cart.find((x) => x.product_id === p.id);
+                const inTemp = tempItems.find((x) => x.product.id === p.id);
                 return (
-                  <button
+                  <div
                     key={p.id}
-                    onClick={() => addToCart(p, variantNote.trim())}
-                    data-testid={`variant-item-${p.id}`}
                     className="flex w-full items-center gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:border-primary"
+                    data-testid={`variant-item-${p.id}`}
                   >
-                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-secondary flex items-center justify-center">
-                      {p.image ? <img src={p.image} alt="" className="h-full w-full object-cover" /> : <ShoppingCart className="h-5 w-5 text-muted-foreground" />}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{stripVariant(p.name, variantCat?.name)}</p>
-                      <p className={`text-xs ${p.stock <= 0 ? "font-semibold text-destructive" : "text-muted-foreground"}`}>Stok: {p.stock}{p.stock <= 0 ? " (minus)" : ""}</p>
-                    </div>
-                    <div className="text-right">
+                    <button onClick={() => addTemp(p)} className="flex min-w-0 flex-1 items-center gap-3 text-left" data-testid={`variant-add-${p.id}`}>
+                      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-secondary flex items-center justify-center">
+                        {p.image ? <img src={p.image} alt="" className="h-full w-full object-cover" /> : <ShoppingCart className="h-5 w-5 text-muted-foreground" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{stripVariant(p.name, variantCat?.name)}</p>
+                        <p className={`text-xs ${p.stock <= 0 ? "font-semibold text-destructive" : "text-muted-foreground"}`}>Stok: {p.stock}{p.stock <= 0 ? " (minus)" : ""}</p>
+                      </div>
                       <p className="font-display font-bold text-primary">{rupiah(p.price)}</p>
-                      {inCart && <span className="text-[10px] font-semibold text-emerald-600">{inCart.qty} di keranjang</span>}
-                    </div>
-                  </button>
+                    </button>
+                    {inTemp ? (
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button onClick={() => decTemp(p.id)} className="flex h-7 w-7 items-center justify-center rounded-md bg-secondary" data-testid={`variant-minus-${p.id}`}><Minus className="h-3.5 w-3.5" /></button>
+                        <span className="w-5 text-center text-sm font-semibold" data-testid={`variant-qty-${p.id}`}>{inTemp.qty}</span>
+                        <button onClick={() => addTemp(p)} className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground" data-testid={`variant-plus-${p.id}`}><Plus className="h-3.5 w-3.5" /></button>
+                      </div>
+                    ) : (
+                      <button onClick={() => addTemp(p)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground" data-testid={`variant-quickadd-${p.id}`}><Plus className="h-3.5 w-3.5" /></button>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -544,8 +617,12 @@ export default function POS() {
               data-testid="variant-note-input"
               className="mb-3 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
-            <p className="mb-3 text-[11px] text-muted-foreground">Catatan ini akan menempel pada varian yang Anda tambahkan setelahnya.</p>
-            <Button variant="outline" className="w-full" onClick={() => setVariantCat(null)} data-testid="variant-done-button">Selesai</Button>
+            <p className="mb-3 text-[11px] text-muted-foreground">Catatan akan menempel ke semua varian yang dipilih saat menekan Selesai.</p>
+            <Button className="w-full" onClick={() => { commitVariants(); setVariantCat(null); }} data-testid="variant-done-button">
+              {tempItems.reduce((s, x) => s + x.qty, 0) > 0
+                ? `Selesai — Tambah ${tempItems.reduce((s, x) => s + x.qty, 0)} item`
+                : "Selesai"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

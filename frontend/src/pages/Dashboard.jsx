@@ -3,7 +3,7 @@ import api, { rupiah } from "@/lib/api";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
-import { TrendingUp, Receipt, PiggyBank, Package, AlertTriangle, Activity } from "lucide-react";
+import { TrendingUp, Receipt, PiggyBank, Package, AlertTriangle, Activity, PackageMinus } from "lucide-react";
 
 const Stat = ({ icon: Icon, label, value, sub, tint }) => (
   <div className="rounded-lg border border-border bg-card p-5" data-testid={`stat-${label}`}>
@@ -40,6 +40,25 @@ export default function Dashboard() {
         <Stat icon={Receipt} label="Total Omzet" value={rupiah(d.total_revenue)} sub={`${d.total_transactions} transaksi`} tint="bg-violet-500/10 text-violet-600" />
         <Stat icon={Package} label="Total Produk" value={d.product_count} sub={`${d.low_stock_count} stok menipis`} tint="bg-orange-500/10 text-orange-600" />
       </div>
+
+      {(d.minus_stock || []).length > 0 && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-5" data-testid="minus-stock-card">
+          <div className="flex items-center gap-2">
+            <PackageMinus className="h-4 w-4 text-destructive" />
+            <h3 className="font-display text-lg font-semibold text-destructive">Pengingat Stok Minus</h3>
+            <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-semibold text-destructive" data-testid="minus-stock-count">{d.minus_stock.length}</span>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">Produk berikut stoknya minus — segera lakukan restock lewat menu Inventory / Pembelian.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {d.minus_stock.map((p) => (
+              <div key={p.id} className="flex items-center gap-2 rounded-md border border-destructive/30 bg-card px-3 py-2 text-sm" data-testid={`minus-stock-${p.id}`}>
+                <span className="font-medium">{p.name}</span>
+                <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-bold text-destructive">{p.stock} {p.unit}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="rounded-lg border border-border bg-card p-5 lg:col-span-2">
