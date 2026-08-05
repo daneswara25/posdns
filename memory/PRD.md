@@ -89,6 +89,10 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - CHANGED: `clear-transactions` kini juga menghapus koleksi `expenses`.
 - Tested E2E: pengeluaran tercatat, laba rugi akurat (Laba Bersih = Penjualan − Pengeluaran), penjualan menembus stok negatif (93→−7) berhasil. Data tes dibersihkan.
 
+## Update (2026-06-05) — Bagian 5: Thumbnail POS lebih kecil & responsif
+- CHANGED: Grid produk/kategori POS jadi responsif rapat: `grid-cols-3 sm:4 md:6 xl:8 2xl:10`, gap-2. Kartu & tile dibuat compact (padding/teks/badge lebih kecil). Split layout produk:keranjang dari 8:4 → 9:3 agar area produk lebih dominan.
+- Terverifikasi jumlah thumbnail terlihat: Desktop ~49, Tablet ~30, Mobile ~15 (sesuai target user ~40/~30/~12). Tanpa error JS.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.

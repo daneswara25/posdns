@@ -282,7 +282,7 @@ export default function POS() {
 
       <div className="grid h-[calc(100vh-3.5rem)] grid-cols-1 lg:grid-cols-12">
         {/* products */}
-        <div className="flex flex-col overflow-hidden lg:col-span-8">
+        <div className="flex flex-col overflow-hidden lg:col-span-9">
           <div className="border-b border-border p-4">
             <div className="relative">
               <ScanLine className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
@@ -298,32 +298,32 @@ export default function POS() {
           <div className="flex-1 overflow-y-auto p-4">
             {searching ? (
               /* Direct product search results (barcode / name) */
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10">
                 {filtered.map((p) => (
                   <motion.button
                     key={p.id}
                     whileTap={{ scale: 0.96 }}
                     onClick={() => addToCart(p)}
                     data-testid={`pos-product-${p.id}`}
-                    className="flex flex-col rounded-lg border border-border bg-card p-3 text-left transition-colors duration-200 hover:border-primary"
+                    className="flex flex-col rounded-md border border-border bg-card p-1.5 text-left transition-colors duration-200 hover:border-primary"
                   >
-                    <div className="mb-2 aspect-square overflow-hidden rounded-md bg-secondary flex items-center justify-center">
+                    <div className="mb-1 aspect-square overflow-hidden rounded bg-secondary flex items-center justify-center">
                       {p.image ? (
                         <img src={p.image} alt={p.name} className="h-full w-full object-cover" />
                       ) : (
-                        <ShoppingCart className="h-6 w-6 text-muted-foreground" />
+                        <ShoppingCart className="h-5 w-5 text-muted-foreground" />
                       )}
                     </div>
-                    <p className="line-clamp-2 text-sm font-medium">{p.name}</p>
-                    <p className="mt-1 font-display font-bold text-primary">{rupiah(p.price)}</p>
-                    <p className={`text-xs ${p.stock <= 0 ? "font-semibold text-destructive" : "text-muted-foreground"}`}>Stok: {p.stock}</p>
+                    <p className="line-clamp-2 text-[11px] font-medium leading-tight">{p.name}</p>
+                    <p className="mt-0.5 font-display text-xs font-bold text-primary">{rupiah(p.price)}</p>
+                    <p className={`text-[10px] ${p.stock <= 0 ? "font-semibold text-destructive" : "text-muted-foreground"}`}>Stok: {p.stock}</p>
                   </motion.button>
                 ))}
                 {filtered.length === 0 && <p className="col-span-full text-sm text-muted-foreground">Tidak ada produk.</p>}
               </div>
             ) : (
               /* Category tiles (main products) — variants shown after tapping */
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10">
                 {catTiles.map((tile) => {
                   const thumb = tileThumb(tile);
                   return (
@@ -331,19 +331,19 @@ export default function POS() {
                       key={tile.id}
                       whileTap={{ scale: 0.96 }}
                       onClick={() => { setVariantCat(tile); setVariantNote(""); }}                      data-testid={`pos-cat-tile-${tile.id}`}
-                      className="group relative flex aspect-square flex-col overflow-hidden rounded-lg border border-border bg-card text-left transition-colors duration-200 hover:border-primary"
+                      className="group relative flex aspect-square flex-col overflow-hidden rounded-md border border-border bg-card text-left transition-colors duration-200 hover:border-primary"
                     >
                       <div className="absolute inset-0 flex items-center justify-center bg-secondary">
                         {thumb ? (
                           <img src={thumb} alt={tile.name} className="h-full w-full object-cover" />
                         ) : (
-                          <span className="font-display text-3xl font-bold text-muted-foreground">{tile.name.charAt(0)}</span>
+                          <span className="font-display text-xl font-bold text-muted-foreground">{tile.name.charAt(0)}</span>
                         )}
                       </div>
-                      <div className="absolute inset-x-0 bottom-0 bg-black/55 px-2 py-1.5 backdrop-blur-sm">
-                        <p className="line-clamp-2 text-center text-xs font-semibold text-white">{tile.name}</p>
+                      <div className="absolute inset-x-0 bottom-0 bg-black/55 px-1 py-1 backdrop-blur-sm">
+                        <p className="line-clamp-2 text-center text-[10px] font-semibold leading-tight text-white">{tile.name}</p>
                       </div>
-                      <span className="absolute right-1.5 top-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">{tile.items.length}</span>
+                      <span className="absolute right-1 top-1 rounded-full bg-primary px-1 py-0.5 text-[9px] font-bold leading-none text-primary-foreground">{tile.items.length}</span>
                     </motion.button>
                   );
                 })}
@@ -354,7 +354,7 @@ export default function POS() {
         </div>
 
         {/* cart */}
-        <div className="flex flex-col border-l border-border bg-card lg:col-span-4">
+        <div className="flex flex-col border-l border-border bg-card lg:col-span-3">
           <div className="space-y-2 border-b border-border p-4">
             <div className="flex items-center justify-between">
               <h3 className="font-display text-lg font-semibold">Keranjang</h3>
