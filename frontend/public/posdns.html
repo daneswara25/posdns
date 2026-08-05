@@ -134,11 +134,12 @@
 
   <script>
     // ============================================================
-    // SYSTEM_URL otomatis mengikuti domain tempat halaman ini dibuka.
-    // Jadi berfungsi di URL emergent.host MAUPUN di www.daneswara.com
-    // setelah domain terhubung — tanpa perlu ganti kode.
+    // Halaman login bisa dibuka dari domain mana pun (mis.
+    // www.daneswara.com/posdns.html). Setelah login BERHASIL,
+    // pengguna diarahkan & menjalankan aplikasi di server Emergent.
+    // (jangan pakai garis miring "/" di akhir)
     // ============================================================
-    var SYSTEM_URL = window.location.origin;
+    var SYSTEM_URL = "https://pos-retail-platform.emergent.host";
 
     var form = document.getElementById("loginForm");
     var btn = document.getElementById("submitBtn");
