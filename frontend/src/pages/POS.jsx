@@ -16,9 +16,15 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
 import { toast } from "sonner";
-import { Search, Plus, Minus, Trash2, X, ArrowLeft, ShoppingCart, ScanLine, CheckCircle2, PauseCircle, PlayCircle, HandCoins, Copy, MessageCircle, UserPlus, Check, ChevronsUpDown } from "lucide-react";
+import { Search, Plus, Minus, Trash2, X, ArrowLeft, ShoppingCart, ScanLine, CheckCircle2, PauseCircle, PlayCircle, HandCoins, Copy, MessageCircle, UserPlus, Check, ChevronsUpDown, Grid2x2, Grid3x3, LayoutGrid } from "lucide-react";
 
 const METHODS = ["Tunai", "Kartu", "QRIS", "E-Wallet"];
+
+const POS_GRID = {
+  besar: "grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6",
+  sedang: "grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10",
+  kecil: "grid-cols-4 gap-1.5 sm:grid-cols-5 md:grid-cols-8 xl:grid-cols-10 2xl:grid-cols-12",
+};
 
 export default function POS() {
   const navigate = useNavigate();
@@ -30,6 +36,9 @@ export default function POS() {
   const [variantCat, setVariantCat] = useState(null);
   const [custOpen, setCustOpen] = useState(false);
   const [variantNote, setVariantNote] = useState("");
+  const [density, setDensity] = useState(() => localStorage.getItem("pos_density") || "sedang");
+  const setDens = (d) => { setDensity(d); localStorage.setItem("pos_density", d); };
+  const gridClass = POS_GRID[density] || POS_GRID.sedang;
   const [cart, setCart] = useState([]);
   const [discount, setDiscount] = useState(0);
   const [taxRate, setTaxRate] = useState(0);
@@ -284,21 +293,40 @@ export default function POS() {
         {/* products */}
         <div className="flex flex-col overflow-hidden lg:col-span-9">
           <div className="border-b border-border p-4">
-            <div className="relative">
-              <ScanLine className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Scan barcode atau cari produk..."
-                className="h-12 pl-11"
-                data-testid="pos-search-input"
-              />
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1">
+                <ScanLine className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Scan barcode atau cari produk..."
+                  className="h-12 pl-11"
+                  data-testid="pos-search-input"
+                />
+              </div>
+              <div className="flex shrink-0 items-center rounded-md border border-border p-0.5" data-testid="grid-density-toggle">
+                {[
+                  { k: "besar", icon: Grid2x2, label: "Besar" },
+                  { k: "sedang", icon: LayoutGrid, label: "Sedang" },
+                  { k: "kecil", icon: Grid3x3, label: "Kecil" },
+                ].map(({ k, icon: Icon, label }) => (
+                  <button
+                    key={k}
+                    onClick={() => setDens(k)}
+                    title={`Ukuran ${label}`}
+                    data-testid={`density-${k}`}
+                    className={`flex h-9 w-9 items-center justify-center rounded transition-colors ${density === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           <div className="flex-1 overflow-y-auto p-4">
             {searching ? (
               /* Direct product search results (barcode / name) */
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10">
+              <div className={`grid ${gridClass}`}>
                 {filtered.map((p) => (
                   <motion.button
                     key={p.id}
@@ -323,7 +351,7 @@ export default function POS() {
               </div>
             ) : (
               /* Category tiles (main products) — variants shown after tapping */
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10">
+              <div className={`grid ${gridClass}`}>
                 {catTiles.map((tile) => {
                   const thumb = tileThumb(tile);
                   return (
