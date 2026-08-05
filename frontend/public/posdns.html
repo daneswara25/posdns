@@ -134,11 +134,11 @@
 
   <script>
     // ============================================================
-    // GANTI URL INI dengan URL sistem POS Anda setelah deploy.
-    // Contoh production: "https://pos.domainanda.com"
-    // (jangan pakai garis miring "/" di akhir)
+    // SYSTEM_URL otomatis mengikuti domain tempat halaman ini dibuka.
+    // Jadi berfungsi di URL emergent.host MAUPUN di www.daneswara.com
+    // setelah domain terhubung — tanpa perlu ganti kode.
     // ============================================================
-    var SYSTEM_URL = "https://pos-retail-platform.emergent.host";
+    var SYSTEM_URL = window.location.origin;
 
     var form = document.getElementById("loginForm");
     var btn = document.getElementById("submitBtn");
