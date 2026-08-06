@@ -119,6 +119,13 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
   - Isi keranjang diekstrak ke variabel `cartBody` (dipakai di panel & drawer). Drawer menutup otomatis setelah bayar/deposit/tahan (`setCartOpen(false)`), dan cleanup `document.body.style.pointerEvents` saat drawer ditutup.
 - Verified (self-test screenshot): landscape panel OK, portrait FAB+badge+total OK, drawer OK, checkout tunai end-to-end di portrait → struk tampil, pointerEvents bersih setelah tutup.
 
+## Update (2026-06) — Dukungan Printer 80mm + Manajemen Jenis Printer
+- FIXED: Pencetakan kini sadar lebar kertas. `frontend/src/lib/printer.js` — ESC/POS `WIDTH` (32/48 kolom) & raster `RASTER_W` (384/576 dot) serta `@page size` (58mm/80mm) mengikuti `settings.paper_width`. Sebelumnya di-hardcode 58mm sehingga struk sempit di printer 80mm (VSC TM-80D kini tercetak penuh). `imageToRaster(src, maxW)` menerima lebar maksimum. Logo di Settings di-resize 384/576 sesuai lebar kertas.
+- ADDED: Manajemen "Daftar Printer (Jenis Printer)" di halaman Pengaturan (Owner/Manager). Profil printer disimpan di `settings.printers` (array: {id, name, connection, paper_width}) + `settings.active_printer`. Bisa Tambah/Ubah/Hapus/Jadikan Aktif. Mengaktifkan profil menyetel `print_mode` (desktop/bluetooth) + `paper_width` yang dipakai `printReceiptSmart` di seluruh app. Menggantikan dropdown "Mode Cetak" tunggal sebelumnya.
+- Backend: `SettingsInput` menambah field `paper_width`, `printers`, `active_printer` (server.py).
+- Catatan koneksi VSC TM-80D (USB+BT, 80mm): USB/Desktop paling andal (cetak lewat dialog browser); Bluetooth hanya jika printer mendukung BLE (Chrome Android/Windows; tidak jalan di iPhone/Safari).
+- Verified: curl PUT/GET /api/settings menyimpan printers+paper_width; UI tambah/aktif/hapus + Simpan (toast "Pengaturan disimpan") terverifikasi via screenshot; 2 profil tersimpan (VSC TM-80D desktop 80mm aktif + Printer BT bluetooth 80mm).
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.

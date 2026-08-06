@@ -9,7 +9,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Store, Save, Printer, Bluetooth, Trash2, AlertTriangle, Monitor, TestTube2 } from "lucide-react";
+import { Store, Save, Printer, Bluetooth, Trash2, AlertTriangle, Monitor, TestTube2, Plus, Pencil } from "lucide-react";
 import {
   connectBluetoothPrinter, disconnectPrinter, isPrinterConnected, getPrinterName,
   bluetoothSupported, printReceiptSmart,
@@ -17,16 +17,59 @@ import {
 
 export default function Settings() {
   const { user } = useAuth();
-  const [form, setForm] = useState({ business_name: "", address: "", phone: "", currency: "Rp", tax_rate: 0, receipt_footer: "", print_mode: "desktop" });
+  const [form, setForm] = useState({ business_name: "", address: "", phone: "", currency: "Rp", tax_rate: 0, receipt_footer: "", print_mode: "desktop", paper_width: "58", printers: [], active_printer: "" });
   const [btName, setBtName] = useState(getPrinterName());
   const [connecting, setConnecting] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [printerDialog, setPrinterDialog] = useState(false);
+  const [editingPrinter, setEditingPrinter] = useState(null);
+  const [pForm, setPForm] = useState({ name: "", connection: "desktop", paper_width: "80" });
 
   useEffect(() => {
-    api.get("/settings").then((r) => setForm((f) => ({ ...f, ...r.data, print_mode: r.data?.print_mode || "desktop" })));
+    api.get("/settings").then((r) => setForm((f) => ({ ...f, ...r.data, print_mode: r.data?.print_mode || "desktop", paper_width: r.data?.paper_width || "58", printers: r.data?.printers || [], active_printer: r.data?.active_printer || "" })));
     // eslint-disable-next-line
   }, []);
+
+  const openAddPrinter = () => { setEditingPrinter(null); setPForm({ name: "", connection: "desktop", paper_width: "80" }); setPrinterDialog(true); };
+  const openEditPrinter = (p) => { setEditingPrinter(p.id); setPForm({ name: p.name, connection: p.connection, paper_width: p.paper_width }); setPrinterDialog(true); };
+  const savePrinter = () => {
+    if (!pForm.name.trim()) return toast.error("Nama printer wajib diisi");
+    setForm((f) => {
+      const list = [...(f.printers || [])];
+      let next;
+      if (editingPrinter) {
+        next = list.map((x) => (x.id === editingPrinter ? { ...x, ...pForm, name: pForm.name.trim() } : x));
+      } else {
+        const id = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
+        next = [...list, { id, ...pForm, name: pForm.name.trim() }];
+      }
+      const patch = { ...f, printers: next };
+      // auto-activate the first printer or the edited-active one
+      const activeId = editingPrinter || (next.length === 1 ? next[next.length - 1].id : f.active_printer);
+      const activeP = next.find((x) => x.id === activeId);
+      if (activeP) { patch.active_printer = activeP.id; patch.print_mode = activeP.connection; patch.paper_width = activeP.paper_width; }
+      return patch;
+    });
+    setPrinterDialog(false);
+    toast.success(editingPrinter ? "Printer diperbarui — klik Simpan untuk menyimpan" : "Printer ditambahkan — klik Simpan untuk menyimpan");
+  };
+  const activatePrinter = (p) => {
+    setForm((f) => ({ ...f, active_printer: p.id, print_mode: p.connection, paper_width: p.paper_width }));
+    toast.info(`Printer aktif: ${p.name} — klik Simpan untuk menyimpan`);
+  };
+  const deletePrinter = (id) => {
+    setForm((f) => {
+      const next = (f.printers || []).filter((x) => x.id !== id);
+      const patch = { ...f, printers: next };
+      if (f.active_printer === id) {
+        const fallback = next[0];
+        patch.active_printer = fallback ? fallback.id : "";
+        if (fallback) { patch.print_mode = fallback.connection; patch.paper_width = fallback.paper_width; }
+      }
+      return patch;
+    });
+  };
 
   const save = async () => {
     try {
@@ -60,7 +103,7 @@ export default function Settings() {
     reader.onload = (ev) => {
       const img = new Image();
       img.onload = () => {
-        const MAX = 384; // thermal 58mm width in dots
+        const MAX = String(form.paper_width) === "80" ? 576 : 384; // thermal width in dots
         let { width, height } = img;
         if (width > MAX) { height = Math.round((height * MAX) / width); width = MAX; }
         const canvas = document.createElement("canvas");
@@ -157,19 +200,40 @@ export default function Settings() {
             </div>
           </div>
 
-          <div className="space-y-1">
-            <Label>Mode Cetak Struk</Label>
-            <Select value={form.print_mode} onValueChange={(v) => setForm({ ...form, print_mode: v })}>
-              <SelectTrigger data-testid="print-mode-select"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="desktop"><span className="flex items-center gap-2"><Monitor className="h-4 w-4" /> Desktop / USB (dialog print)</span></SelectItem>
-                <SelectItem value="bluetooth"><span className="flex items-center gap-2"><Bluetooth className="h-4 w-4" /> Bluetooth Thermal (58mm)</span></SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Daftar Printer (Jenis Printer)</Label>
+              <Button size="sm" variant="outline" className="gap-1" onClick={openAddPrinter} data-testid="add-printer-button"><Plus className="h-4 w-4" /> Tambah Printer</Button>
+            </div>
+            {(form.printers || []).length === 0 && (
+              <p className="rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground" data-testid="printer-empty">
+                Belum ada printer tersimpan. Tambahkan printer Anda (mis. <b>VSC TM-80D</b>, koneksi USB/Desktop atau Bluetooth, kertas <b>80mm</b>) lalu jadikan aktif.
+              </p>
+            )}
+            <div className="space-y-2">
+              {(form.printers || []).map((p) => {
+                const active = form.active_printer === p.id;
+                return (
+                  <div key={p.id} className={`flex items-center justify-between gap-2 rounded-md border p-3 ${active ? "border-primary bg-accent/40" : "border-border"}`} data-testid={`printer-item-${p.id}`}>
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-2 text-sm font-semibold">
+                        {p.connection === "bluetooth" ? <Bluetooth className="h-4 w-4 shrink-0" /> : <Monitor className="h-4 w-4 shrink-0" />}
+                        <span className="truncate">{p.name}</span>
+                        {active && <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">AKTIF</span>}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{p.connection === "bluetooth" ? "Bluetooth Thermal" : "USB / Desktop"} · Kertas {p.paper_width}mm</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      {!active && <Button size="sm" variant="outline" onClick={() => activatePrinter(p)} data-testid={`printer-activate-${p.id}`}>Jadikan Aktif</Button>}
+                      <Button size="icon" variant="ghost" onClick={() => openEditPrinter(p)} data-testid={`printer-edit-${p.id}`}><Pencil className="h-4 w-4" /></Button>
+                      <Button size="icon" variant="ghost" className="text-destructive" onClick={() => deletePrinter(p.id)} data-testid={`printer-delete-${p.id}`}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
             <p className="text-xs text-muted-foreground">
-              {form.print_mode === "bluetooth"
-                ? "Mode Bluetooth: butuh Chrome di Android/Windows & printer BLE. Tidak berfungsi di iPhone/Safari."
-                : "Mode Desktop: mencetak lewat dialog print browser (printer USB/biasa). Berfungsi di semua perangkat."}
+              Printer <b>aktif</b> dipakai untuk mencetak struk di seluruh aplikasi. Untuk <b>VSC TM-80D</b>: koneksi <b>USB/Desktop</b> paling andal (cetak lewat dialog browser), atau <b>Bluetooth</b> bila printer mendukung BLE. Lebar kertas <b>80mm</b>.
             </p>
           </div>
 
@@ -182,7 +246,7 @@ export default function Settings() {
               ) : (
                 <>
                   <div className="mb-3 flex items-center justify-between">
-                    <span className="text-sm">Status printer:</span>
+                    <span className="text-sm">Status printer Bluetooth:</span>
                     <span className={`text-sm font-semibold ${btName ? "text-emerald-600" : "text-muted-foreground"}`} data-testid="bt-status">
                       {btName ? `Terhubung · ${btName}` : "Belum terhubung"}
                     </span>
@@ -221,6 +285,45 @@ export default function Settings() {
           </Button>
         </div>
       )}
+
+      <Dialog open={printerDialog} onOpenChange={setPrinterDialog}>
+        <DialogContent data-testid="printer-dialog">
+          <DialogHeader>
+            <DialogTitle>{editingPrinter ? "Ubah Printer" : "Tambah Printer"}</DialogTitle>
+            <DialogDescription>Simpan jenis printer beserta koneksi & lebar kertasnya. Printer aktif dipakai untuk mencetak struk.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label>Nama Printer</Label>
+              <Input value={pForm.name} onChange={(e) => setPForm({ ...pForm, name: e.target.value })} placeholder="cth: VSC TM-80D Kasir" data-testid="printer-name-input" />
+            </div>
+            <div className="space-y-1">
+              <Label>Koneksi</Label>
+              <Select value={pForm.connection} onValueChange={(v) => setPForm({ ...pForm, connection: v })}>
+                <SelectTrigger data-testid="printer-connection-select"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="desktop"><span className="flex items-center gap-2"><Monitor className="h-4 w-4" /> USB / Desktop (dialog print)</span></SelectItem>
+                  <SelectItem value="bluetooth"><span className="flex items-center gap-2"><Bluetooth className="h-4 w-4" /> Bluetooth Thermal (BLE)</span></SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Lebar Kertas</Label>
+              <Select value={pForm.paper_width} onValueChange={(v) => setPForm({ ...pForm, paper_width: v })}>
+                <SelectTrigger data-testid="printer-paper-select"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="58">58mm (kecil)</SelectItem>
+                  <SelectItem value="80">80mm (VSC TM-80D)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPrinterDialog(false)}>Batal</Button>
+            <Button onClick={savePrinter} data-testid="printer-save-button">Simpan Printer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={confirmReset} onOpenChange={setConfirmReset}>
         <DialogContent data-testid="reset-confirm-dialog">

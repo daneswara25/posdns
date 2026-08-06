@@ -180,6 +180,9 @@ class SettingsInput(BaseModel):
     receipt_footer: Optional[str] = None
     logo: Optional[str] = None
     print_mode: Optional[str] = None
+    paper_width: Optional[str] = None
+    printers: Optional[list] = None
+    active_printer: Optional[str] = None
 
 
 class CustomerInput(BaseModel):

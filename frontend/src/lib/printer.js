@@ -78,12 +78,12 @@ async function writeBytes(bytes) {
 }
 
 // Convert an image (data URL or same-origin path) to an ESC/POS raster command (GS v 0).
-async function imageToRaster(src) {
+async function imageToRaster(src, maxW = 384) {
   const img = await new Promise((res, rej) => {
     const i = new Image();
     i.onload = () => res(i); i.onerror = rej; i.src = src;
   });
-  const MAXW = 384; // 58mm printable width in dots
+  const MAXW = maxW; // printable width in dots (58mm=384, 80mm=576)
   let w = img.width, h = img.height;
   if (w > MAXW) { h = Math.round((h * MAXW) / w); w = MAXW; }
   const canvas = document.createElement("canvas");
@@ -113,7 +113,9 @@ async function buildEscPos(r, settings) {
   const push = (arr) => out.push(...arr);
   const text = (str) => push(Array.from(enc.encode(str)));
   const ESC = 0x1b, GS = 0x1d;
-  const WIDTH = 32; // 58mm ~32 chars
+  const paper = String(settings.paper_width || "58");
+  const WIDTH = paper === "80" ? 48 : 32; // chars per line (Font A): 58mm~32, 80mm~48
+  const RASTER_W = paper === "80" ? 576 : 384; // printable dots
 
   const row = (l, rr) => {
     const left = String(l), right = String(rr);
@@ -127,7 +129,7 @@ async function buildEscPos(r, settings) {
   // logo raster (uploaded custom logo, else app default)
   const logoSrc = settings.logo || `${window.location.origin}/logo.png`;
   try {
-    const raster = await imageToRaster(logoSrc);
+    const raster = await imageToRaster(logoSrc, RASTER_W);
     push(Array.from(raster));
     push([0x0a]);
   } catch (e) { /* skip logo if it fails */ }
@@ -181,9 +183,10 @@ export function printDesktop(r, settings) {
   const payRows = isOrder
     ? line("Deposit (DP)", rp(r.deposit_amount)) + line(r.status === "Selesai" ? "Lunas" : "Sisa", rp(r.remaining))
     : line(r.payment_method || "Bayar", rp(r.paid_amount)) + line("Kembalian", rp(r.change || 0));
+  const pageW = String(settings.paper_width || "58") === "80" ? "80mm" : "58mm";
   const html = `<html><head><title>${r.invoice || r.order_number || "Struk"}</title>
 <style>
-  @page { size: 80mm auto; margin: 4mm; }
+  @page { size: ${pageW} auto; margin: 3mm; }
   * { font-family: 'Courier New', monospace; font-size: 12px; box-sizing: border-box; }
   body { margin: 0; color: #000; }
   h2 { text-align: center; font-size: 14px; margin: 4px 0; }
