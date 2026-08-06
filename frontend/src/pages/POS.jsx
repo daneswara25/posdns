@@ -15,6 +15,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
 import { toast } from "sonner";
 import { Search, Plus, Minus, Trash2, X, ArrowLeft, ShoppingCart, ScanLine, CheckCircle2, PauseCircle, PlayCircle, HandCoins, Copy, MessageCircle, UserPlus, Check, ChevronsUpDown, Grid2x2, Grid3x3, LayoutGrid, Pencil } from "lucide-react";
@@ -27,9 +28,29 @@ const POS_GRID = {
   kecil: "grid-cols-4 gap-1.5 sm:grid-cols-5 md:grid-cols-8 xl:grid-cols-10 2xl:grid-cols-12",
 };
 
+// Panel keranjang menyamping saat lebar/landscape; tombol mengambang + drawer saat portrait.
+function useWideLayout() {
+  const query = "(min-width: 1024px), (orientation: landscape)";
+  const get = () => (typeof window !== "undefined" ? window.matchMedia(query).matches : true);
+  const [wide, setWide] = useState(get);
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const handler = () => setWide(mq.matches);
+    mq.addEventListener("change", handler);
+    window.addEventListener("resize", handler);
+    return () => {
+      mq.removeEventListener("change", handler);
+      window.removeEventListener("resize", handler);
+    };
+  }, []);
+  return wide;
+}
+
 export default function POS() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const wide = useWideLayout();
+  const [cartOpen, setCartOpen] = useState(false);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [q, setQ] = useState("");
@@ -76,7 +97,7 @@ export default function POS() {
     const label = window.prompt("Label pesanan (mis. Order Budi / Antrian 3):", `Order ${held.length + 1}`);
     if (!label) return;
     await api.post("/held-orders", { label, items: cart, discount: Number(discount) || 0 });
-    setCart([]); setDiscount(0);
+    setCart([]); setDiscount(0); setCartOpen(false);
     api.get("/held-orders").then((r) => setHeld(r.data));
     toast.success("Pesanan ditahan");
   };
@@ -96,7 +117,7 @@ export default function POS() {
         deposit_amount: Number(depositAmt) || 0, deposit_method: method,
       });
       toast.success("Pesanan + deposit tersimpan");
-      setDepositOpen(false); setDepositAmt(""); setCart([]); setDiscount(0); setCustomerId("");
+      setDepositOpen(false); setDepositAmt(""); setCart([]); setDiscount(0); setCustomerId(""); setCartOpen(false);
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
 
@@ -200,6 +221,7 @@ export default function POS() {
   };
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const cartCount = cart.reduce((s, i) => s + i.qty, 0);
   const taxAmt = ((subtotal - discount) * taxRate) / 100;
   const total = Math.max(0, subtotal - discount + taxAmt);
   const change = Math.max(0, Number(paid || 0) - total);
@@ -227,6 +249,7 @@ export default function POS() {
       setDiscount(0);
       setPaid("");
       setCustomerId("");
+      setCartOpen(false);
       load();
       toast.success("Transaksi berhasil");
       setTimeout(() => {
@@ -323,9 +346,146 @@ export default function POS() {
     }
   };
 
+  const cartBody = (
+    <>
+      <div className="space-y-2 border-b border-border p-4">
+        <div className="flex items-center justify-between pr-8">
+          <h3 className="font-display text-lg font-semibold">Keranjang</h3>
+          <Button variant="outline" size="sm" className="gap-1" onClick={holdOrder} data-testid="pos-hold-button"><PauseCircle className="h-4 w-4" /> Tahan</Button>
+        </div>
+        <Popover open={custOpen} onOpenChange={setCustOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" role="combobox" className="h-9 w-full justify-between font-normal" data-testid="pos-customer-select">
+              <span className="truncate">
+                {customerId ? (customers.find((c) => c.id === customerId)?.name || "Pelanggan") : "Pilih pelanggan (opsional)"}
+              </span>
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+            <Command>
+              <CommandInput placeholder="Cari nama / nomor..." data-testid="pos-customer-search" />
+              <CommandList>
+                <CommandEmpty>Pelanggan tidak ditemukan.</CommandEmpty>
+                <CommandItem
+                  value="tanpa pelanggan"
+                  onSelect={() => { setCustomerId(""); setCustOpen(false); }}
+                  data-testid="pos-customer-none"
+                >
+                  <Check className={`mr-2 h-4 w-4 ${!customerId ? "opacity-100" : "opacity-0"}`} />
+                  Tanpa pelanggan
+                </CommandItem>
+                {customers.map((c) => (
+                  <CommandItem
+                    key={c.id}
+                    value={`${c.name} ${c.phone || ""}`}
+                    onSelect={() => { setCustomerId(c.id); setCustOpen(false); }}
+                    data-testid={`pos-customer-option-${c.id}`}
+                  >
+                    <Check className={`mr-2 h-4 w-4 ${customerId === c.id ? "opacity-100" : "opacity-0"}`} />
+                    <span className="truncate">{c.name}{c.phone ? ` · ${c.phone}` : ""}</span>
+                  </CommandItem>
+                ))}
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+        {held.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {held.map((h) => (
+              <button key={h.id} onClick={() => resumeOrder(h)} className="flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium hover:bg-accent" data-testid={`resume-${h.id}`}>
+                <PlayCircle className="h-3.5 w-3.5" /> {h.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="flex-1 overflow-y-auto p-4">
+        <AnimatePresence>
+          {cart.length === 0 && <p className="text-sm text-muted-foreground">Belum ada item.</p>}
+          {cart.map((i) => (
+            <motion.div
+              key={i.lineId}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="mb-3 rounded-md border border-border p-3"
+              data-testid={`cart-item-${i.product_id}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">{i.name}</p>
+                  {editingLine === i.lineId ? (
+                    <div className="mt-1.5 space-y-1.5">
+                      <textarea
+                        value={editNoteVal}
+                        onChange={(e) => setEditNoteVal(e.target.value)}
+                        rows={2}
+                        autoFocus
+                        placeholder="Tulis catatan..."
+                        data-testid={`cart-note-edit-${i.product_id}`}
+                        className="w-full resize-none rounded-md border border-input bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <div className="flex gap-1.5">
+                        <button onClick={() => saveEditNote(i.lineId)} className="rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground" data-testid={`cart-note-save-${i.product_id}`}>Simpan</button>
+                        <button onClick={() => { setEditingLine(null); setEditNoteVal(""); }} className="rounded-md bg-secondary px-2.5 py-1 text-xs font-medium" data-testid={`cart-note-cancel-${i.product_id}`}>Batal</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => startEditNote(i)} className="mt-0.5 flex max-w-full items-center gap-1 text-left text-xs italic text-muted-foreground hover:text-foreground" data-testid={`cart-note-btn-${i.product_id}`}>
+                      <Pencil className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{i.note ? i.note : "Tambah catatan"}</span>
+                    </button>
+                  )}
+                </div>
+                <button onClick={() => removeItem(i.lineId)} className="shrink-0 text-destructive" data-testid={`cart-remove-${i.product_id}`}>
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="mt-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setQty(i.lineId, -1)} className="flex h-7 w-7 items-center justify-center rounded-md bg-secondary" data-testid={`cart-minus-${i.product_id}`}>
+                    <Minus className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="w-6 text-center text-sm font-semibold">{i.qty}</span>
+                  <button onClick={() => setQty(i.lineId, 1)} className="flex h-7 w-7 items-center justify-center rounded-md bg-secondary" data-testid={`cart-plus-${i.product_id}`}>
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <span className="font-display text-sm font-bold">{rupiah(i.price * i.qty)}</span>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+      <div className="border-t border-border p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <Label className="text-xs whitespace-nowrap">Diskon (Rp)</Label>
+          <NumberInput
+            value={discount}
+            onValueChange={setDiscount}
+            className="h-9"
+            data-testid="pos-discount-input"
+          />
+        </div>
+        <div className="space-y-1 text-sm">
+          <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{rupiah(subtotal)}</span></div>
+          <div className="flex justify-between text-muted-foreground"><span>Diskon</span><span>-{rupiah(discount)}</span></div>
+          <div className="flex justify-between text-muted-foreground"><span>Pajak ({taxRate}%)</span><span>{rupiah(taxAmt)}</span></div>
+          <div className="flex justify-between border-t border-border pt-2 font-display text-lg font-bold"><span>Total</span><span data-testid="pos-total">{rupiah(total)}</span></div>
+        </div>
+        <Button onClick={openPay} className="mt-4 h-14 w-full text-base font-bold" data-testid="pos-pay-button">
+          Bayar
+        </Button>
+        <Button onClick={() => { if (cart.length === 0) return toast.error("Keranjang kosong"); setDepositAmt(""); setDepositOpen(true); }} variant="outline" className="mt-2 h-11 w-full gap-2 font-semibold" data-testid="pos-deposit-button">
+          <HandCoins className="h-4 w-4" /> Pesanan + Deposit (DP)
+        </Button>
+      </div>
+    </>
+  );
+
   return (
-    <div className="h-screen overflow-hidden bg-background">
-      {/* top bar */}
+    <div className="flex h-screen flex-col overflow-hidden bg-background">
       <div className="flex h-14 items-center justify-between border-b border-border bg-card px-4">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate("/")} data-testid="pos-back-button">
@@ -336,9 +496,9 @@ export default function POS() {
         <span className="text-sm text-muted-foreground">{user?.name} · {user?.role}</span>
       </div>
 
-      <div className="grid h-[calc(100vh-3.5rem)] grid-cols-1 lg:grid-cols-12">
+      <div className="flex flex-1 overflow-hidden">
         {/* products */}
-        <div className="flex flex-col overflow-hidden lg:col-span-9">
+        <div className="flex flex-1 flex-col overflow-hidden">
           <div className="border-b border-border p-4">
             <div className="flex items-center gap-3">
               <div className="relative flex-1">
@@ -428,143 +588,39 @@ export default function POS() {
           </div>
         </div>
 
-        {/* cart */}
-        <div className="flex flex-col border-l border-border bg-card lg:col-span-3">
-          <div className="space-y-2 border-b border-border p-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-display text-lg font-semibold">Keranjang</h3>
-              <Button variant="outline" size="sm" className="gap-1" onClick={holdOrder} data-testid="pos-hold-button"><PauseCircle className="h-4 w-4" /> Tahan</Button>
-            </div>
-            <Popover open={custOpen} onOpenChange={setCustOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" className="h-9 w-full justify-between font-normal" data-testid="pos-customer-select">
-                  <span className="truncate">
-                    {customerId ? (customers.find((c) => c.id === customerId)?.name || "Pelanggan") : "Pilih pelanggan (opsional)"}
-                  </span>
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Cari nama / nomor..." data-testid="pos-customer-search" />
-                  <CommandList>
-                    <CommandEmpty>Pelanggan tidak ditemukan.</CommandEmpty>
-                    <CommandItem
-                      value="tanpa pelanggan"
-                      onSelect={() => { setCustomerId(""); setCustOpen(false); }}
-                      data-testid="pos-customer-none"
-                    >
-                      <Check className={`mr-2 h-4 w-4 ${!customerId ? "opacity-100" : "opacity-0"}`} />
-                      Tanpa pelanggan
-                    </CommandItem>
-                    {customers.map((c) => (
-                      <CommandItem
-                        key={c.id}
-                        value={`${c.name} ${c.phone || ""}`}
-                        onSelect={() => { setCustomerId(c.id); setCustOpen(false); }}
-                        data-testid={`pos-customer-option-${c.id}`}
-                      >
-                        <Check className={`mr-2 h-4 w-4 ${customerId === c.id ? "opacity-100" : "opacity-0"}`} />
-                        <span className="truncate">{c.name}{c.phone ? ` · ${c.phone}` : ""}</span>
-                      </CommandItem>
-                    ))}
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-            {held.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {held.map((h) => (
-                  <button key={h.id} onClick={() => resumeOrder(h)} className="flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium hover:bg-accent" data-testid={`resume-${h.id}`}>
-                    <PlayCircle className="h-3.5 w-3.5" /> {h.label}
-                  </button>
-                ))}
-              </div>
+        {/* cart side panel — landscape / desktop */}
+        {wide && (
+          <aside className="flex w-[340px] shrink-0 flex-col border-l border-border bg-card" data-testid="cart-panel">
+            {cartBody}
+          </aside>
+        )}
+      </div>
+
+      {/* floating cart button — portrait */}
+      {!wide && (
+        <button
+          onClick={() => setCartOpen(true)}
+          data-testid="pos-cart-fab"
+          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-primary px-5 py-3.5 text-primary-foreground shadow-lg transition-transform active:scale-95"
+        >
+          <div className="relative">
+            <ShoppingCart className="h-6 w-6" />
+            {cartCount > 0 && (
+              <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white" data-testid="pos-cart-fab-count">{cartCount}</span>
             )}
           </div>
-          <div className="flex-1 overflow-y-auto p-4">
-            <AnimatePresence>
-              {cart.length === 0 && <p className="text-sm text-muted-foreground">Belum ada item.</p>}
-              {cart.map((i) => (
-                <motion.div
-                  key={i.lineId}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="mb-3 rounded-md border border-border p-3"
-                  data-testid={`cart-item-${i.product_id}`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium">{i.name}</p>
-                      {editingLine === i.lineId ? (
-                        <div className="mt-1.5 space-y-1.5">
-                          <textarea
-                            value={editNoteVal}
-                            onChange={(e) => setEditNoteVal(e.target.value)}
-                            rows={2}
-                            autoFocus
-                            placeholder="Tulis catatan..."
-                            data-testid={`cart-note-edit-${i.product_id}`}
-                            className="w-full resize-none rounded-md border border-input bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
-                          />
-                          <div className="flex gap-1.5">
-                            <button onClick={() => saveEditNote(i.lineId)} className="rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground" data-testid={`cart-note-save-${i.product_id}`}>Simpan</button>
-                            <button onClick={() => { setEditingLine(null); setEditNoteVal(""); }} className="rounded-md bg-secondary px-2.5 py-1 text-xs font-medium" data-testid={`cart-note-cancel-${i.product_id}`}>Batal</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button onClick={() => startEditNote(i)} className="mt-0.5 flex max-w-full items-center gap-1 text-left text-xs italic text-muted-foreground hover:text-foreground" data-testid={`cart-note-btn-${i.product_id}`}>
-                          <Pencil className="h-3 w-3 shrink-0" />
-                          <span className="truncate">{i.note ? i.note : "Tambah catatan"}</span>
-                        </button>
-                      )}
-                    </div>
-                    <button onClick={() => removeItem(i.lineId)} className="shrink-0 text-destructive" data-testid={`cart-remove-${i.product_id}`}>
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => setQty(i.lineId, -1)} className="flex h-7 w-7 items-center justify-center rounded-md bg-secondary" data-testid={`cart-minus-${i.product_id}`}>
-                        <Minus className="h-3.5 w-3.5" />
-                      </button>
-                      <span className="w-6 text-center text-sm font-semibold">{i.qty}</span>
-                      <button onClick={() => setQty(i.lineId, 1)} className="flex h-7 w-7 items-center justify-center rounded-md bg-secondary" data-testid={`cart-plus-${i.product_id}`}>
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    <span className="font-display text-sm font-bold">{rupiah(i.price * i.qty)}</span>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-          <div className="border-t border-border p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <Label className="text-xs whitespace-nowrap">Diskon (Rp)</Label>
-              <NumberInput
-                value={discount}
-                onValueChange={setDiscount}
-                className="h-9"
-                data-testid="pos-discount-input"
-              />
-            </div>
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{rupiah(subtotal)}</span></div>
-              <div className="flex justify-between text-muted-foreground"><span>Diskon</span><span>-{rupiah(discount)}</span></div>
-              <div className="flex justify-between text-muted-foreground"><span>Pajak ({taxRate}%)</span><span>{rupiah(taxAmt)}</span></div>
-              <div className="flex justify-between border-t border-border pt-2 font-display text-lg font-bold"><span>Total</span><span data-testid="pos-total">{rupiah(total)}</span></div>
-            </div>
-            <Button onClick={openPay} className="mt-4 h-14 w-full text-base font-bold" data-testid="pos-pay-button">
-              Bayar
-            </Button>
-            <Button onClick={() => { if (cart.length === 0) return toast.error("Keranjang kosong"); setDepositAmt(""); setDepositOpen(true); }} variant="outline" className="mt-2 h-11 w-full gap-2 font-semibold" data-testid="pos-deposit-button">
-              <HandCoins className="h-4 w-4" /> Pesanan + Deposit (DP)
-            </Button>
-          </div>
-        </div>
-      </div>
+          <span className="font-display text-sm font-bold">{rupiah(total)}</span>
+        </button>
+      )}
+
+      {/* cart drawer — portrait */}
+      {!wide && (
+        <Sheet open={cartOpen} onOpenChange={(o) => { setCartOpen(o); if (!o) setTimeout(() => { document.body.style.pointerEvents = ""; }, 100); }}>
+          <SheetContent side="right" className="flex w-full flex-col gap-0 bg-card p-0 sm:max-w-md" data-testid="cart-sheet">
+            {cartBody}
+          </SheetContent>
+        </Sheet>
+      )}
 
       {/* variant picker dialog */}
       <Dialog open={!!variantCat} onOpenChange={(o) => { if (!o) { commitVariants(); setVariantCat(null); setTimeout(() => { document.body.style.pointerEvents = ""; }, 100); } }}>

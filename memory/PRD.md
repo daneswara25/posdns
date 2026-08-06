@@ -111,6 +111,14 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - Verified iteration_5 & iteration_6 (2 crash P0 diperbaiki: Products.jsx useViewMode, Suppliers.jsx import) — semua skenario 100% pass.
 
 
+## Update (2026-06) — Tata letak Kasir POS responsif (orientasi)
+- CHANGED: Halaman Kasir POS (`frontend/src/pages/POS.jsx`) dirombak agar produk jadi area utama besar & keranjang panel sempit — sesuai gambar referensi.
+  - Hook baru `useWideLayout()` deteksi via matchMedia `(min-width: 1024px), (orientation: landscape)`.
+  - Landscape/Desktop/Tablet landscape: keranjang tampil sebagai panel samping tetap (`aside` lebar 340px, `data-testid=cart-panel`). Layout container jadi flex (bukan grid lg:col-span).
+  - Portrait (HP): produk full-width; keranjang disembunyikan; muncul tombol mengambang `pos-cart-fab` (kanan-bawah) dengan badge jumlah item + total. Klik → drawer `cart-sheet` (Sheet dari kanan) berisi keranjang lengkap.
+  - Isi keranjang diekstrak ke variabel `cartBody` (dipakai di panel & drawer). Drawer menutup otomatis setelah bayar/deposit/tahan (`setCartOpen(false)`), dan cleanup `document.body.style.pointerEvents` saat drawer ditutup.
+- Verified (self-test screenshot): landscape panel OK, portrait FAB+badge+total OK, drawer OK, checkout tunai end-to-end di portrait → struk tampil, pointerEvents bersih setelah tutup.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
