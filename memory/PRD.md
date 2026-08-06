@@ -126,6 +126,12 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - Catatan koneksi VSC TM-80D (USB+BT, 80mm): USB/Desktop paling andal (cetak lewat dialog browser); Bluetooth hanya jika printer mendukung BLE (Chrome Android/Windows; tidak jalan di iPhone/Safari).
 - Verified: curl PUT/GET /api/settings menyimpan printers+paper_width; UI tambah/aktif/hapus + Simpan (toast "Pengaturan disimpan") terverifikasi via screenshot; 2 profil tersimpan (VSC TM-80D desktop 80mm aktif + Printer BT bluetooth 80mm).
 
+## Update (2026-06) — Fix logo cetak kebesaran (raster memenuhi kertas)
+- FIXED: Logo struk tercetak sangat besar & menghabiskan kertas (teks tidak keluar / cetak putus di tengah). Akar masalah: `/logo.png` berukuran 746×1279 (potret sangat tinggi); `imageToRaster` lama hanya membatasi LEBAR sehingga TINGGI ikut membesar (ratusan-ribuan dot).
+- CHANGED (`frontend/src/lib/printer.js`): `imageToRaster(src, {maxW, maxH, fullW})` kini membatasi lebar DAN tinggi (jaga aspek rasio) lalu MEMUSATKAN logo di lebar cetak penuh (canvas di-pad, byte-aligned) sehingga rata tengah tanpa bergantung dukungan justify printer. Di `buildEscPos`: logo dibatasi `maxW = 0.42×RASTER_W` (~1/3–1/2 lebar) & `maxH = 160` dot. Hasil dgn logo asli: 93×160 dot (~12×20mm) — kecil-sedang.
+- CHANGED: Logo mode Desktop/HTML dibatasi `max-width:40%; max-height:70px`.
+- Verified: via page.evaluate di browser, logo asli (746×1279) → capped 93×160 (80mm & 58mm). Cetak thermal nyata belum diverifikasi agen (butuh perangkat); user perlu REDEPLOY karena diuji di produksi.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.

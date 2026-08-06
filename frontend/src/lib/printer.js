@@ -77,32 +77,38 @@ async function writeBytes(bytes) {
   }
 }
 
-// Convert an image (data URL or same-origin path) to an ESC/POS raster command (GS v 0).
-async function imageToRaster(src, maxW = 384) {
+// Convert an image to a centered, size-limited ESC/POS raster command (GS v 0).
+// Logo is capped small-medium and centered within the full printable width.
+async function imageToRaster(src, { maxW = 220, maxH = 150, fullW = 384 } = {}) {
   const img = await new Promise((res, rej) => {
     const i = new Image();
     i.onload = () => res(i); i.onerror = rej; i.src = src;
   });
-  const MAXW = maxW; // printable width in dots (58mm=384, 80mm=576)
-  let w = img.width, h = img.height;
-  if (w > MAXW) { h = Math.round((h * MAXW) / w); w = MAXW; }
+  // Target logo dimensions (keep aspect ratio, cap width AND height).
+  let lw = img.width || maxW, lh = img.height || maxH;
+  if (lw > maxW) { lh = Math.round((lh * maxW) / lw); lw = maxW; }
+  if (maxH && lh > maxH) { lw = Math.round((lw * maxH) / lh); lh = maxH; }
+  // Canvas padded to full printable width (byte-aligned) so the logo is centered.
+  const W = Math.ceil(fullW / 8) * 8;
+  const H = Math.max(1, lh);
   const canvas = document.createElement("canvas");
-  canvas.width = w; canvas.height = h;
+  canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h);
-  ctx.drawImage(img, 0, 0, w, h);
-  const data = ctx.getImageData(0, 0, w, h).data;
-  const bytesPerRow = Math.ceil(w / 8);
-  const raster = new Uint8Array(bytesPerRow * h);
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const idx = (y * w + x) * 4;
+  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
+  const ox = Math.max(0, Math.round((W - lw) / 2));
+  ctx.drawImage(img, ox, 0, lw, lh);
+  const data = ctx.getImageData(0, 0, W, H).data;
+  const bytesPerRow = W / 8;
+  const raster = new Uint8Array(bytesPerRow * H);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const idx = (y * W + x) * 4;
       const rr = data[idx], gg = data[idx + 1], bb = data[idx + 2], aa = data[idx + 3];
       const nearWhite = rr > 230 && gg > 230 && bb > 230;
       if (aa > 128 && !nearWhite) raster[y * bytesPerRow + (x >> 3)] |= (0x80 >> (x % 8));
     }
   }
-  const header = [0x1d, 0x76, 0x30, 0x00, bytesPerRow & 0xff, (bytesPerRow >> 8) & 0xff, h & 0xff, (h >> 8) & 0xff];
+  const header = [0x1d, 0x76, 0x30, 0x00, bytesPerRow & 0xff, (bytesPerRow >> 8) & 0xff, H & 0xff, (H >> 8) & 0xff];
   return new Uint8Array([...header, ...raster]);
 }
 
@@ -126,10 +132,11 @@ async function buildEscPos(r, settings) {
 
   push([ESC, 0x40]); // init
   push([ESC, 0x61, 0x01]); // center
-  // logo raster (uploaded custom logo, else app default)
+  // logo raster — capped small-medium (~1/3 width) & centered so it never eats the whole roll.
   const logoSrc = settings.logo || `${window.location.origin}/logo.png`;
   try {
-    const raster = await imageToRaster(logoSrc, RASTER_W);
+    const logoW = Math.round(RASTER_W * 0.42); // ~1/3–1/2 of paper width
+    const raster = await imageToRaster(logoSrc, { maxW: logoW, maxH: 160, fullW: RASTER_W });
     push(Array.from(raster));
     push([0x0a]);
   } catch (e) { /* skip logo if it fails */ }
@@ -191,7 +198,7 @@ export function printDesktop(r, settings) {
   body { margin: 0; color: #000; }
   h2 { text-align: center; font-size: 14px; margin: 4px 0; }
   p.sub { text-align: center; margin: 0; font-size: 11px; }
-  img.logo { display:block; margin: 0 auto 4px; max-width: 140px; max-height: 90px; object-fit: contain; }
+  img.logo { display:block; margin: 0 auto 4px; max-width: 40%; max-height: 70px; object-fit: contain; }
   .divider { border-top: 1px dashed #000; margin: 6px 0; }
   .row { display: flex; justify-content: space-between; margin: 2px 0; }
   .note { font-size: 11px; font-style: italic; margin: 0 0 2px 8px; }
