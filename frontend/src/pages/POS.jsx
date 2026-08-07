@@ -79,6 +79,26 @@ export default function POS() {
   const [held, setHeld] = useState([]);
   const [depositOpen, setDepositOpen] = useState(false);
   const [depositAmt, setDepositAmt] = useState("");
+  const [priceModal, setPriceModal] = useState(null); // { product, source: 'direct'|'variant' }
+  const [priceVal, setPriceVal] = useState("");
+
+  const needPrice = (p) => !(Number(p?.price) > 0);
+  const openPrice = (product, source) => { setPriceVal(""); setPriceModal({ product, source }); };
+  const confirmPrice = () => {
+    const val = Number(priceVal) || 0;
+    if (val <= 0) return toast.error("Masukkan harga lebih dari 0");
+    const { product, source } = priceModal;
+    if (source === "direct") {
+      addToCart(product, "", val);
+    } else {
+      setTempItems((t) => {
+        const ex = t.find((x) => x.product.id === product.id);
+        if (ex) return t.map((x) => (x.product.id === product.id ? { ...x, qty: x.qty + 1, price: val } : x));
+        return [...t, { product, qty: 1, price: val }];
+      });
+    }
+    setPriceModal(null); setPriceVal("");
+  };
 
   const load = () => {
     api.get("/products").then((r) => setProducts(r.data));
@@ -164,12 +184,13 @@ export default function POS() {
     return name.startsWith(pref) ? name.slice(pref.length) : name;
   };
 
-  const addToCart = (p, note = "") => {
-    const lineId = `${p.id}|${note}`;
+  const addToCart = (p, note = "", priceOverride = null) => {
+    const price = priceOverride != null ? Number(priceOverride) : (Number(p.price) || 0);
+    const lineId = `${p.id}|${note}|${price}`;
     setCart((c) => {
       const ex = c.find((x) => x.lineId === lineId);
       if (ex) return c.map((x) => (x.lineId === lineId ? { ...x, qty: x.qty + 1 } : x));
-      return [...c, { lineId, product_id: p.id, name: p.name, price: p.price, cost: p.cost || 0, qty: 1, note }];
+      return [...c, { lineId, product_id: p.id, name: p.name, price, cost: p.cost || 0, qty: 1, note }];
     });
   };
   const setQty = (lineId, delta) =>
@@ -178,12 +199,17 @@ export default function POS() {
     );
   const removeItem = (lineId) => setCart((c) => c.filter((x) => x.lineId !== lineId));
 
-  const addTemp = (p) =>
+  const addTemp = (p) => {
+    if (needPrice(p) && !tempItems.find((x) => x.product.id === p.id)) {
+      openPrice(p, "variant");
+      return;
+    }
     setTempItems((t) => {
       const ex = t.find((x) => x.product.id === p.id);
       if (ex) return t.map((x) => (x.product.id === p.id ? { ...x, qty: x.qty + 1 } : x));
       return [...t, { product: p, qty: 1 }];
     });
+  };
   const decTemp = (pid) =>
     setTempItems((t) => t.map((x) => (x.product.id === pid ? { ...x, qty: x.qty - 1 } : x)).filter((x) => x.qty > 0));
   const commitVariants = () => {
@@ -191,11 +217,12 @@ export default function POS() {
     if (tempItems.length) {
       setCart((c) => {
         let next = [...c];
-        tempItems.forEach(({ product, qty }) => {
-          const lineId = `${product.id}|${note}`;
+        tempItems.forEach(({ product, qty, price }) => {
+          const unit = price != null ? Number(price) : (Number(product.price) || 0);
+          const lineId = `${product.id}|${note}|${unit}`;
           const ex = next.find((x) => x.lineId === lineId);
           if (ex) next = next.map((x) => (x.lineId === lineId ? { ...x, qty: x.qty + qty } : x));
-          else next = [...next, { lineId, product_id: product.id, name: product.name, price: product.price, cost: product.cost || 0, qty, note }];
+          else next = [...next, { lineId, product_id: product.id, name: product.name, price: unit, cost: product.cost || 0, qty, note }];
         });
         return next;
       });
@@ -209,7 +236,7 @@ export default function POS() {
     setCart((c) => {
       const item = c.find((x) => x.lineId === lineId);
       if (!item) return c;
-      const newLineId = `${item.product_id}|${note}`;
+      const newLineId = `${item.product_id}|${note}|${item.price}`;
       let next = c.filter((x) => x.lineId !== lineId);
       const ex = next.find((x) => x.lineId === newLineId);
       if (ex) next = next.map((x) => (x.lineId === newLineId ? { ...x, qty: x.qty + item.qty } : x));
@@ -538,7 +565,7 @@ export default function POS() {
                   <motion.button
                     key={p.id}
                     whileTap={{ scale: 0.96 }}
-                    onClick={() => addToCart(p)}
+                    onClick={() => (needPrice(p) ? openPrice(p, "direct") : addToCart(p))}
                     data-testid={`pos-product-${p.id}`}
                     className="flex flex-col rounded-md border border-border bg-card p-1.5 text-left transition-colors duration-200 hover:border-primary"
                   >
@@ -550,7 +577,7 @@ export default function POS() {
                       )}
                     </div>
                     <p className="line-clamp-2 text-[11px] font-medium leading-tight">{p.name}</p>
-                    <p className="mt-0.5 font-display text-xs font-bold text-primary">{rupiah(p.price)}</p>
+                    <p className="mt-0.5 font-display text-xs font-bold text-primary">{needPrice(p) ? "Harga manual" : rupiah(p.price)}</p>
                     <p className={`text-[10px] ${p.stock <= 0 ? "font-semibold text-destructive" : "text-muted-foreground"}`}>Stok: {p.stock}</p>
                   </motion.button>
                 ))}
@@ -647,7 +674,7 @@ export default function POS() {
                         <p className="truncate text-sm font-medium">{stripVariant(p.name, variantCat?.name)}</p>
                         <p className={`text-xs ${p.stock <= 0 ? "font-semibold text-destructive" : "text-muted-foreground"}`}>Stok: {p.stock}{p.stock <= 0 ? " (minus)" : ""}</p>
                       </div>
-                      <p className="font-display font-bold text-primary">{rupiah(p.price)}</p>
+                      <p className="font-display font-bold text-primary">{inTemp?.price != null ? rupiah(inTemp.price) : (needPrice(p) ? "Manual" : rupiah(p.price))}</p>
                     </button>
                     {inTemp ? (
                       <div className="flex shrink-0 items-center gap-1.5">
@@ -748,6 +775,36 @@ export default function POS() {
             </div>
           </div>
           <DialogFooter><Button onClick={submitDeposit} className="h-12 w-full font-bold" data-testid="deposit-confirm-button">Simpan Pesanan</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* manual price dialog (for products with price 0) */}
+      <Dialog open={!!priceModal} onOpenChange={(o) => { if (!o) { setPriceModal(null); setPriceVal(""); setTimeout(() => { document.body.style.pointerEvents = ""; }, 100); } }}>
+        <DialogContent data-testid="price-dialog">
+          <DialogHeader>
+            <DialogTitle className="font-display">Masukkan Harga</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{priceModal?.product?.name}</span>
+              {priceModal?.product?.cost ? ` · Modal ${rupiah(priceModal.product.cost)}` : ""}
+            </p>
+            <div className="space-y-1">
+              <Label>Harga Jual (Rp)</Label>
+              <NumberInput
+                value={priceVal}
+                onValueChange={setPriceVal}
+                autoFocus
+                className="h-12 text-lg"
+                data-testid="price-input"
+                onKeyDown={(e) => { if (e.key === "Enter") confirmPrice(); }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setPriceModal(null); setPriceVal(""); }} data-testid="price-cancel-button">Batal</Button>
+            <Button onClick={confirmPrice} className="font-bold" data-testid="price-confirm-button">Tambah ke Keranjang</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

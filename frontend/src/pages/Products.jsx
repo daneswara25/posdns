@@ -65,11 +65,11 @@ export default function Products() {
   };
 
   const save = async () => {
-    if (!form.name || form.price === "") return toast.error("Nama dan harga wajib diisi");
+    if (!form.name) return toast.error("Nama produk wajib diisi");
     const payload = {
       ...form,
       category_id: form.category_id || null,
-      price: Number(form.price), cost: Number(form.cost) || 0,
+      price: Number(form.price) || 0, cost: Number(form.cost) || 0,
       stock: Number(form.stock) || 0, min_stock: Number(form.min_stock) || 0,
     };
     try {
@@ -211,7 +211,7 @@ export default function Products() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1"><Label>Harga Jual</Label><NumberInput value={form.price} onValueChange={(v) => setForm({ ...form, price: v })} data-testid="product-price-input" /></div>
+            <div className="space-y-1"><Label>Harga Jual <span className="text-muted-foreground">(kosong/0 = harga manual di POS)</span></Label><NumberInput value={form.price} onValueChange={(v) => setForm({ ...form, price: v })} placeholder="Kosongkan untuk harga manual" data-testid="product-price-input" /></div>
             <div className="space-y-1"><Label>Harga Modal <span className="text-muted-foreground">(opsional)</span></Label><NumberInput value={form.cost} onValueChange={(v) => setForm({ ...form, cost: v })} placeholder="Boleh dikosongkan" /></div>
             <div className="space-y-1"><Label>Stok</Label><NumberInput value={form.stock} onValueChange={(v) => setForm({ ...form, stock: v })} data-testid="product-stock-input" /></div>
             <div className="space-y-1"><Label>Min. Stok</Label><NumberInput value={form.min_stock} onValueChange={(v) => setForm({ ...form, min_stock: v })} /></div>

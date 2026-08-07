@@ -9,7 +9,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Store, Save, Printer, Bluetooth, Trash2, AlertTriangle, Monitor, TestTube2, Plus, Pencil } from "lucide-react";
+import { Store, Save, Printer, Bluetooth, Trash2, AlertTriangle, Monitor, TestTube2, Plus, Pencil, Database, RefreshCw, PackageX } from "lucide-react";
 import {
   connectBluetoothPrinter, disconnectPrinter, isPrinterConnected, getPrinterName,
   bluetoothSupported, printReceiptSmart,
@@ -22,6 +22,8 @@ export default function Settings() {
   const [connecting, setConnecting] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [catalogBusy, setCatalogBusy] = useState(false);
+  const [stockBusy, setStockBusy] = useState(false);
   const [printerDialog, setPrinterDialog] = useState(false);
   const [editingPrinter, setEditingPrinter] = useState(null);
   const [pForm, setPForm] = useState({ name: "", connection: "desktop", paper_width: "80" });
@@ -137,6 +139,32 @@ export default function Settings() {
       toast.success("Tes cetak dikirim");
     } catch (e) {
       toast.error(e.message || "Gagal mencetak");
+    }
+  };
+
+  const doReprice = async () => {
+    if (!window.confirm("Cocokkan harga & biaya SEMUA produk dari file katalog (via SKU)? Harga jual & harga modal akan ditimpa. Harga 'variable' → 0 (manual di POS).")) return;
+    setCatalogBusy(true);
+    try {
+      const r = await api.post("/admin/reprice-catalog");
+      const d = r.data || {};
+      toast.success(`Selesai: ${d.matched} produk diperbarui dari ${d.catalog_rows} baris katalog. Tidak cocok: ${d.unmatched_count}.`);
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail));
+    } finally {
+      setCatalogBusy(false);
+    }
+  };
+  const doResetStock = async () => {
+    if (!window.confirm("Reset stok SEMUA produk menjadi 0? Tindakan ini tidak dapat dibatalkan.")) return;
+    setStockBusy(true);
+    try {
+      const r = await api.post("/admin/reset-stock");
+      toast.success(`Stok ${r.data.reset} produk di-reset ke 0`);
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail));
+    } finally {
+      setStockBusy(false);
     }
   };
 
@@ -269,6 +297,27 @@ export default function Settings() {
           <Button onClick={save} className="gap-2" data-testid="save-printer-button"><Save className="h-4 w-4" /> Simpan Mode Cetak</Button>
         </div>
       </div>
+
+      {/* Katalog & Stok — Owner only */}
+      {user?.role === "Owner" && (
+        <div className="rounded-lg border border-border bg-card p-6" data-testid="catalog-tools">
+          <div className="mb-2 flex items-center gap-2">
+            <Database className="h-5 w-5 text-primary" />
+            <h3 className="font-display text-lg font-semibold">Katalog & Stok</h3>
+          </div>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Cocokkan <b>harga jual</b> & <b>harga pokok</b> semua produk dengan file katalog (dicocokkan via SKU). Harga bertanda <b>variable</b> di file akan di-set 0 (harga manual di POS). Atau reset stok semua produk ke 0.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={doReprice} disabled={catalogBusy} className="gap-2" data-testid="reprice-catalog-button">
+              <RefreshCw className="h-4 w-4" /> {catalogBusy ? "Memproses..." : "Cocokkan Harga & Biaya dari Katalog"}
+            </Button>
+            <Button variant="outline" onClick={doResetStock} disabled={stockBusy} className="gap-2" data-testid="reset-stock-button">
+              <PackageX className="h-4 w-4" /> {stockBusy ? "Memproses..." : "Reset Semua Stok = 0"}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Danger zone — Owner only */}
       {user?.role === "Owner" && (

@@ -132,6 +132,13 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - CHANGED: Logo mode Desktop/HTML dibatasi `max-width:40%; max-height:70px`.
 - Verified: via page.evaluate di browser, logo asli (746×1279) → capped 93×160 (80mm & 58mm). Cetak thermal nyata belum diverifikasi agen (butuh perangkat); user perlu REDEPLOY karena diuji di produksi.
 
+## Update (2026-06) — Harga manual di POS + Cocokkan Katalog + Reset Stok
+- ADDED (Fitur 1 — Harga manual): Produk dengan `price` 0/kosong kini bisa diisi harganya saat transaksi di Kasir. `Products.jsx`: validasi tidak lagi mewajibkan harga (kosong → 0). `POS.jsx`: helper `needPrice`, dialog "Masukkan Harga" (`price-dialog`, `price-input`, `price-confirm-button`). Berlaku di jalur pencarian langsung (`openPrice(p,'direct')`) & jalur varian (`openPrice(p,'variant')`, harga disimpan di tempItem). `lineId` kini menyertakan harga (`${id}|${note}|${price}`) agar harga manual berbeda tidak tergabung. Kartu produk/varian berharga 0 menampilkan "Harga manual"/"Manual".
+- ADDED (Fitur 2 — Cocokkan Katalog): Endpoint `POST /api/admin/reprice-catalog` (Owner). Membaca `backend/data/export_items.csv` (bundled), cocokkan produk via **SKU**, timpa `price` ← kolom `Price [DANESWARA PRINTING]` (nilai `variable`/kosong → 0) dan `cost` ← kolom `Cost`. Verified preview: 300/300 cocok, contoh Gold K price 75000/cost 65000, Drill SS price 0/cost 62000, DTF Meteran price 0/cost 300.
+- ADDED (Fitur 3 — Reset Stok): Endpoint `POST /api/admin/reset-stock` (Owner) → set stok semua produk = 0. Verified: 300 produk → 0.
+- UI: `Settings.jsx` bagian baru "Katalog & Stok" (Owner) dengan tombol `reprice-catalog-button` & `reset-stock-button` (konfirmasi via window.confirm). Backend: `import csv`, helper `_parse_catalog_num`.
+- CATATAN DEPLOY: Operasi #2 & #3 dijalankan di PREVIEW untuk pengujian. Produksi punya DB terpisah → user harus REDEPLOY lalu klik kedua tombol di Pengaturan pada produksi (CSV ikut ter-deploy di backend/data).
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.

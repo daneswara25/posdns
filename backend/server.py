@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 import os
 import json
+import csv
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -565,6 +566,59 @@ async def clear_transactions(user: dict = Depends(require_roles("Owner"))):
         result[coll] = r.deleted_count
     await log_activity(tid, user, "Reset Data Transaksi", "Semua transaksi percobaan dihapus")
     return {"ok": True, "deleted": result}
+
+
+def _parse_catalog_num(v):
+    v = (v or "").strip().lower()
+    if not v or v == "variable":
+        return 0.0
+    try:
+        return float(v.replace(".", "").replace(",", ""))
+    except ValueError:
+        return 0.0
+
+
+@api_router.post("/admin/reprice-catalog")
+async def reprice_catalog(user: dict = Depends(require_roles("Owner"))):
+    """Match products by SKU against the bundled catalog CSV and overwrite price & cost.
+    Price column 'variable'/empty -> 0 (manual price at POS). Cost <- 'Cost'."""
+    tid = user["tenant_id"]
+    csv_path = Path(__file__).parent / "data" / "export_items.csv"
+    if not csv_path.exists():
+        raise HTTPException(status_code=400, detail="File katalog tidak ditemukan di server")
+    price_map = {}
+    with open(csv_path, newline="", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            sku = (row.get("SKU") or "").strip()
+            if not sku:
+                continue
+            price_map[sku] = {
+                "price": _parse_catalog_num(row.get("Price [DANESWARA PRINTING]")),
+                "cost": _parse_catalog_num(row.get("Cost")),
+            }
+    products = await db.products.find({"tenant_id": tid}).to_list(10000)
+    matched = 0
+    unmatched = []
+    for p in products:
+        sku = (p.get("sku") or "").strip()
+        m = price_map.get(sku)
+        if m:
+            matched += 1
+            await db.products.update_one({"id": p["id"]}, {"$set": {"price": m["price"], "cost": m["cost"]}})
+        else:
+            unmatched.append(p.get("name") or sku or "?")
+    await log_activity(tid, user, "Cocokkan Katalog", f"{matched} produk diperbarui harga & biaya dari katalog")
+    return {"ok": True, "catalog_rows": len(price_map), "products": len(products), "matched": matched, "unmatched_count": len(unmatched), "unmatched": unmatched[:30]}
+
+
+@api_router.post("/admin/reset-stock")
+async def reset_stock(user: dict = Depends(require_roles("Owner"))):
+    """Set stock = 0 for all products in the tenant."""
+    tid = user["tenant_id"]
+    r = await db.products.update_many({"tenant_id": tid}, {"$set": {"stock": 0}})
+    await log_activity(tid, user, "Reset Stok", f"Stok {r.modified_count} produk di-reset ke 0")
+    return {"ok": True, "reset": r.modified_count}
 
 
 # ---------- Expenses & Profit-Loss ----------
