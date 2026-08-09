@@ -167,6 +167,17 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - UNCHANGED: Logika JS login, `SYSTEM_URL`, alur token, & konfigurasi CORS tidak diubah. Logo base64 dipertahankan (edit dilakukan surgical via string replace).
 - Verified: screenshot `localhost:3000/posdns.html` menampilkan layout split-screen identik dgn aplikasi React.
 
+## Update (2026-06) — Balik foto produk + hapus thumbnail list + urutan kategori
+- REVERTED (`Products.jsx`): Fungsi upload **Foto Produk** dikembalikan ke form Tambah/Edit Produk (handleImage kompres ke JPEG maks 400px, disimpan base64 ke field `image`). `data-testid="product-image-input"` & `product-image-remove`.
+- CHANGED (performa): Thumbnail foto DIHAPUS dari daftar produk Master Data — view list memakai ikon `Package` saja (tidak memuat gambar), view grid kartu tanpa blok gambar. Fungsi `catThumb` dihapus. Tujuan: mencegah sistem lambat saat menampilkan banyak produk.
+- ADDED (Urutan Kategori di POS):
+  - Backend: field kategori `sort_order`; `GET /categories` diurutkan by sort_order asc lalu nama; kategori baru dapat `sort_order = count`; endpoint baru `POST /api/categories/reorder` body `{ids:[...]}` (Owner/Manager/Gudang).
+  - Frontend: tombol "Atur Urutan" di halaman Kategori membuka `reorder-category-dialog` dgn panah `reorder-category-up/down-<id>` & `reorder-category-save-button`. POS otomatis mengikuti urutan karena `catTiles` dibangun dari array `categories` (kini tersortir dari API).
+- Verified: curl (categories reorder mengubah urutan & sort_order 0..2; product create menyimpan `image`); screenshot (form Foto Produk tampil, list tanpa thumbnail, dialog urutan kategori 52 item).
+
+## Pending (menunggu keputusan user)
+- Fitur "Lupa password" di halaman Login (aplikasi & posdns) — menunggu user memilih mekanisme (Hubungi Admin / Email / WhatsApp).
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.

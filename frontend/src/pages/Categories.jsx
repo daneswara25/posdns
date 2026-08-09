@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ViewToggle, useViewMode } from "@/components/ViewToggle";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Tag, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Tag, Search, ListOrdered, ChevronUp, ChevronDown } from "lucide-react";
 
 const COLORS = ["#2563EB", "#7C3AED", "#F97316", "#10B981", "#EF4444", "#0EA5E9"];
 
@@ -65,6 +65,29 @@ export default function Categories() {
     load();
   };
 
+  const [reorderOpen, setReorderOpen] = useState(false);
+  const [reorderList, setReorderList] = useState([]);
+  const openReorder = () => { setReorderList([...cats]); setReorderOpen(true); };
+  const moveItem = (idx, dir) => {
+    setReorderList((list) => {
+      const j = idx + dir;
+      if (j < 0 || j >= list.length) return list;
+      const next = [...list];
+      [next[idx], next[j]] = [next[j], next[idx]];
+      return next;
+    });
+  };
+  const saveReorder = async () => {
+    try {
+      await api.post("/categories/reorder", { ids: reorderList.map((c) => c.id) });
+      toast.success("Urutan kategori disimpan");
+      setReorderOpen(false);
+      load();
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail));
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -72,9 +95,14 @@ export default function Categories() {
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Master Data</p>
           <h1 className="font-display text-3xl font-bold tracking-tight">Kategori</h1>
         </div>
-        <Button onClick={() => { setForm({ name: "", color: "#2563EB", image: "" }); setEditId(null); setOpen(true); }} className="gap-2" data-testid="add-category-button">
-          <Plus className="h-4 w-4" /> Tambah
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={openReorder} className="gap-2" data-testid="reorder-categories-button">
+            <ListOrdered className="h-4 w-4" /> Atur Urutan
+          </Button>
+          <Button onClick={() => { setForm({ name: "", color: "#2563EB", image: "" }); setEditId(null); setOpen(true); }} className="gap-2" data-testid="add-category-button">
+            <Plus className="h-4 w-4" /> Tambah
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -138,6 +166,34 @@ export default function Categories() {
             </div>
           </div>
           <DialogFooter><Button onClick={save} className="w-full" data-testid="save-category-button">Simpan</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={reorderOpen} onOpenChange={(o) => { setReorderOpen(o); if (!o) setTimeout(() => { document.body.style.pointerEvents = ""; }, 100); }}>
+        <DialogContent className="max-h-[90vh] overflow-hidden" data-testid="reorder-category-dialog">
+          <DialogHeader>
+            <DialogTitle className="font-display">Atur Urutan Kategori (POS)</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">Urutan ini menentukan tampilan kategori di layar Kasir (POS). Gunakan panah untuk memindah naik/turun.</p>
+            <div className="max-h-[55vh] space-y-1.5 overflow-y-auto pr-1" data-testid="reorder-category-list">
+              {reorderList.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Belum ada kategori.</p>}
+              {reorderList.map((c, idx) => (
+                <div key={c.id} className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2" data-testid={`reorder-category-item-${c.id}`}>
+                  <span className="w-6 shrink-0 text-xs font-semibold text-muted-foreground">{idx + 1}.</span>
+                  <span className="flex-1 truncate text-sm">{c.name}</span>
+                  <div className="flex shrink-0 gap-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" disabled={idx === 0} onClick={() => moveItem(idx, -1)} data-testid={`reorder-category-up-${c.id}`}><ChevronUp className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" disabled={idx === reorderList.length - 1} onClick={() => moveItem(idx, 1)} data-testid={`reorder-category-down-${c.id}`}><ChevronDown className="h-4 w-4" /></Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReorderOpen(false)}>Batal</Button>
+            <Button onClick={saveReorder} disabled={reorderList.length === 0} data-testid="reorder-category-save-button">Simpan Urutan</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

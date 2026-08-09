@@ -37,6 +37,32 @@ export default function Products() {
   const openNew = () => { setForm(EMPTY); setEditId(null); setOpen(true); };
   const openEdit = (p) => { setForm({ ...p, category_id: p.category_id || "" }); setEditId(p.id); setOpen(true); };
 
+  const handleImage = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return toast.error("File harus berupa gambar");
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 400;
+        let { width, height } = img;
+        if (width > height && width > MAX) { height = Math.round((height * MAX) / width); width = MAX; }
+        else if (height > MAX) { width = Math.round((width * MAX) / height); height = MAX; }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        setForm((f) => ({ ...f, image: canvas.toDataURL("image/jpeg", 0.5) }));
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
   const save = async () => {
     if (!form.name) return toast.error("Nama produk wajib diisi");
     const payload = {
@@ -64,7 +90,6 @@ export default function Products() {
   };
 
   const catName = (id) => cats.find((c) => c.id === id)?.name || "-";
-  const catThumb = (id) => cats.find((c) => c.id === id)?.image || null;
 
   const [reorderOpen, setReorderOpen] = useState(false);
   const [reorderCat, setReorderCat] = useState("");
@@ -146,7 +171,7 @@ export default function Products() {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-md bg-secondary">
-                      {(p.image || catThumb(p.category_id)) ? <img src={p.image || catThumb(p.category_id)} alt="" className="h-full w-full rounded-md object-cover" /> : <Package className="h-4 w-4 text-muted-foreground" />}
+                      <Package className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <div>
                       <p className="font-medium">{p.name}</p>
@@ -181,9 +206,6 @@ export default function Products() {
         <div className={`grid gap-3 ${view === "besar" ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" : "grid-cols-3 sm:grid-cols-4 lg:grid-cols-6"}`} data-testid="product-grid">
           {filtered.map((p) => (
             <div key={p.id} className="flex flex-col overflow-hidden rounded-lg border border-border bg-card" data-testid={`product-card-${p.id}`}>
-              <div className="aspect-square w-full overflow-hidden bg-secondary">
-                {(p.image || catThumb(p.category_id)) ? <img src={p.image || catThumb(p.category_id)} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center"><Package className="h-6 w-6 text-muted-foreground" /></div>}
-              </div>
               <div className={`flex flex-1 flex-col ${view === "besar" ? "p-3" : "p-2"}`}>
                 <p className={`truncate font-medium ${view === "besar" ? "text-sm" : "text-xs"}`}>{p.name}</p>
                 <p className="truncate text-[11px] text-muted-foreground">{catName(p.category_id)}</p>
@@ -229,6 +251,18 @@ export default function Products() {
             <div className="space-y-1"><Label>Stok</Label><NumberInput value={form.stock} onValueChange={(v) => setForm({ ...form, stock: v })} data-testid="product-stock-input" /></div>
             <div className="space-y-1"><Label>Min. Stok</Label><NumberInput value={form.min_stock} onValueChange={(v) => setForm({ ...form, min_stock: v })} /></div>
             <div className="space-y-1"><Label>Satuan</Label><Input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} /></div>
+            <div className="col-span-2 space-y-2">
+              <Label>Foto Produk <span className="text-muted-foreground">(otomatis dikompres, opsional)</span></Label>
+              <div className="flex items-center gap-3">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-secondary">
+                  {form.image ? <img src={form.image} alt="" className="h-full w-full object-cover" /> : <Package className="h-5 w-5 text-muted-foreground" />}
+                </div>
+                <div className="flex-1 space-y-1">
+                  <Input type="file" accept="image/*" onChange={handleImage} data-testid="product-image-input" />
+                  {form.image && <button type="button" onClick={() => setForm({ ...form, image: "" })} className="text-xs text-destructive" data-testid="product-image-remove">Hapus foto</button>}
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button onClick={save} className="w-full" data-testid="save-product-button">Simpan</Button>

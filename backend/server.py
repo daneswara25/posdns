@@ -324,12 +324,15 @@ async def delete_user(uid: str, user: dict = Depends(require_roles("Owner"))):
 # ---------- Categories ----------
 @api_router.get("/categories")
 async def list_categories(user: dict = Depends(get_current_user)):
-    return await db.categories.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).to_list(500)
+    cats = await db.categories.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).to_list(500)
+    cats.sort(key=lambda c: (c.get("sort_order") if c.get("sort_order") is not None else 10**9, (c.get("name") or "").lower()))
+    return cats
 
 
 @api_router.post("/categories")
 async def create_category(data: CategoryInput, user: dict = Depends(require_roles("Owner", "Manager", "Gudang"))):
-    doc = {"id": new_id(), "tenant_id": user["tenant_id"], "name": data.name, "color": data.color, "image": data.image or "", "created_at": now_iso()}
+    count = await db.categories.count_documents({"tenant_id": user["tenant_id"]})
+    doc = {"id": new_id(), "tenant_id": user["tenant_id"], "name": data.name, "color": data.color, "image": data.image or "", "sort_order": count, "created_at": now_iso()}
     await db.categories.insert_one(doc)
     return clean(doc)
 
@@ -363,6 +366,14 @@ async def reorder_products(data: ReorderInput, user: dict = Depends(require_role
     for idx, pid in enumerate(data.ids):
         await db.products.update_one({"id": pid, "tenant_id": user["tenant_id"]}, {"$set": {"sort_order": idx}})
     await log_activity(user["tenant_id"], user, "Atur Urutan Produk", f"{len(data.ids)} produk diurutkan ulang")
+    return {"ok": True, "count": len(data.ids)}
+
+
+@api_router.post("/categories/reorder")
+async def reorder_categories(data: ReorderInput, user: dict = Depends(require_roles("Owner", "Manager", "Gudang"))):
+    for idx, cid in enumerate(data.ids):
+        await db.categories.update_one({"id": cid, "tenant_id": user["tenant_id"]}, {"$set": {"sort_order": idx}})
+    await log_activity(user["tenant_id"], user, "Atur Urutan Kategori", f"{len(data.ids)} kategori diurutkan ulang")
     return {"ok": True, "count": len(data.ids)}
 
 
