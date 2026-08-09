@@ -234,6 +234,9 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - FIXED (bug logo keluar frame): Logo PNG berorientasi portrait (746x1279) sebelumnya dipaksa `width/height:100%` → render ~64x110px & menimpa judul. Diperbaiki dgn `.hero .logo .mark img { max-width:64px; max-height:64px; width:auto; height:auto; object-fit:contain }` dan `.box .brand .mark img { max-width:48px; max-height:48px; ... }`. Aspek rasio terjaga, logo pas di dalam kotak.
 - Verified oleh testing_agent (iteration_9.json, frontend 100%): desktop img 37x64 (tak menimpa h1), mobile img 28x48 (tak menimpa eyebrow), tema biru-putih & form login (#username/#password/#submitBtn) utuh. CATATAN: user berencana menyiapkan file logo dengan rasio sesuai; jika nanti diberikan, cukup ganti base64/URL logo.
 
+## Update (2026-06) — Ganti logo posdns.html (logo biru)
+- CHANGED (`frontend/public/posdns.html`): Kedua logo (hero + brand mobile) diganti dengan file baru **"logo biru.png"** (biru gradient, ~470x470 persegi) via base64. Tampil proporsional: desktop 64×64 (tak menimpa judul), mobile 48×48. Selaras dengan aksen biru tema. Verified via screenshot + boundingRect di kedua viewport.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
