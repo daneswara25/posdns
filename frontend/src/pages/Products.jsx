@@ -91,6 +91,7 @@ export default function Products() {
   };
 
   const catName = (id) => cats.find((c) => c.id === id)?.name || "-";
+  const catThumb = (id) => cats.find((c) => c.id === id)?.image || null;
   const filtered = products.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()));
 
   return (
@@ -133,7 +134,7 @@ export default function Products() {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-md bg-secondary">
-                      {p.image ? <img src={p.image} alt="" className="h-full w-full rounded-md object-cover" /> : <Package className="h-4 w-4 text-muted-foreground" />}
+                      {(p.image || catThumb(p.category_id)) ? <img src={p.image || catThumb(p.category_id)} alt="" className="h-full w-full rounded-md object-cover" /> : <Package className="h-4 w-4 text-muted-foreground" />}
                     </div>
                     <div>
                       <p className="font-medium">{p.name}</p>
@@ -169,7 +170,7 @@ export default function Products() {
           {filtered.map((p) => (
             <div key={p.id} className="flex flex-col overflow-hidden rounded-lg border border-border bg-card" data-testid={`product-card-${p.id}`}>
               <div className="aspect-square w-full overflow-hidden bg-secondary">
-                {p.image ? <img src={p.image} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center"><Package className="h-6 w-6 text-muted-foreground" /></div>}
+                {(p.image || catThumb(p.category_id)) ? <img src={p.image || catThumb(p.category_id)} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center"><Package className="h-6 w-6 text-muted-foreground" /></div>}
               </div>
               <div className={`flex flex-1 flex-col ${view === "besar" ? "p-3" : "p-2"}`}>
                 <p className={`truncate font-medium ${view === "besar" ? "text-sm" : "text-xs"}`}>{p.name}</p>

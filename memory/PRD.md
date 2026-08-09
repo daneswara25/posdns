@@ -144,6 +144,11 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - Preview DB: semua 300 produk stok = 0 (reset-stock idempotent). Produksi: jalankan tombol "Reset Semua Stok = 0" (Pengaturan → Katalog & Stok) setelah redeploy karena DB terpisah.
 - posdns.html link: Produksi https://pos-retail-platform.emergent.host/posdns.html ; Preview https://pos-cloud-modern.preview.emergentagent.com/posdns.html. SYSTEM_URL di file = produksi.
 
+## Update (2026-06) — Ikon produk mewarisi thumbnail kategori
+- CHANGED (`Products.jsx`): produk tanpa gambar sendiri kini menampilkan **thumbnail kategorinya** (fallback: `p.image || catThumb(p.category_id)`), baru fallback ke ikon `Package` bila kategori juga tak bergambar. Helper baru `catThumb(id)`. Berlaku di tampilan List & Kartu (Besar/Kecil).
+- Verified: set sementara gambar kategori APRON → produk APRON tanpa gambar sendiri (Gold K/SERIES/WP) memakai gambar kategori, Drill SS tetap pakai foto sendiri; gambar uji dikembalikan ke kosong.
+- Catatan: user mengatur thumbnail per kategori di halaman Kategori; produksi perlu redeploy agar perubahan aktif.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
