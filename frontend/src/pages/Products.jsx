@@ -15,7 +15,7 @@ import { NumberInput } from "@/components/NumberInput";
 import { ViewToggle, useViewMode } from "@/components/ViewToggle";
 import { Plus, Pencil, Trash2, Search, Package } from "lucide-react";
 
-const EMPTY = { name: "", sku: "", barcode: "", category_id: "", price: "", cost: "", stock: "", min_stock: 5, unit: "pcs", image: "", active: true };
+const EMPTY = { name: "", sku: "", barcode: "", category_id: "", price: "", cost: "", stock: 0, min_stock: 5, unit: "pcs", image: "", active: true };
 
 export default function Products() {
   const { user } = useAuth();

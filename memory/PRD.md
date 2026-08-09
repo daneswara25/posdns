@@ -139,6 +139,11 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - UI: `Settings.jsx` bagian baru "Katalog & Stok" (Owner) dengan tombol `reprice-catalog-button` & `reset-stock-button` (konfirmasi via window.confirm). Backend: `import csv`, helper `_parse_catalog_num`.
 - CATATAN DEPLOY: Operasi #2 & #3 dijalankan di PREVIEW untuk pengujian. Produksi punya DB terpisah → user harus REDEPLOY lalu klik kedua tombol di Pengaturan pada produksi (CSV ikut ter-deploy di backend/data).
 
+## Update (2026-06) — Default stok produk = 0 + link posdns
+- CHANGED: `Products.jsx` `EMPTY.stock` dari "" → 0 sehingga form Tambah Produk menampilkan Stok 0 secara eksplisit (produk baru mulai dari stok 0). Verified via screenshot: field Stok = "0".
+- Preview DB: semua 300 produk stok = 0 (reset-stock idempotent). Produksi: jalankan tombol "Reset Semua Stok = 0" (Pengaturan → Katalog & Stok) setelah redeploy karena DB terpisah.
+- posdns.html link: Produksi https://pos-retail-platform.emergent.host/posdns.html ; Preview https://pos-cloud-modern.preview.emergentagent.com/posdns.html. SYSTEM_URL di file = produksi.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
