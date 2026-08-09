@@ -208,6 +208,13 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - ADDED (`Reports.jsx`): kartu grafik baru **"Tren Laba Bersih & Pengeluaran {year}"** (`net-profit-trend-chart`) — BarChart 2 seri: Laba Bersih (hijau) & Pengeluaran (merah) per bulan, dengan legenda + ringkasan "Laba Bersih setahun". Diletakkan setelah grafik "Tren Omzet Bulanan".
 - Verified: curl (Agu: total 186rb, expense 75rb → net 111rb) + screenshot (dua grafik tampil benar). Pengeluaran uji sudah dihapus agar data bersih.
 
+## Update (2026-06) — Modul Pendapatan Lain-lain
+- ADDED (backend `server.py`): koleksi `other_income`, kategori tetap `OTHER_INCOME_CATEGORIES` = [Biaya layanan, Biaya express, Biaya tambahan/order khusus, Pendapatan komisi]. Endpoint: `GET /other-income-categories`, `GET /other-income` (start/end), `POST /other-income`, `DELETE /other-income/{id}` — semua Owner/Manager.
+- INTEGRATED (Laba Rugi `/reports/profit-loss`): tambah `other_income_total` & `other_income_by_category`; **net_profit = revenue + other_income − expense_total**. `/reports/monthly`: tambah `other_income` per bulan & `net` ikut memperhitungkannya (grafik tren laba bersih otomatis update).
+- INTEGRATED (ekspor & reset): `other_income` masuk `EXPORT_COLLECTIONS` (+date-filterable) dan ikut terhapus pada `admin/clear-transactions`.
+- ADDED (frontend): halaman `OtherIncome.jsx` (route `/pendapatan-lain`, menu sidebar "Pendapatan Lain-lain" ikon HandCoins, Owner/Manager) — mirror Pengeluaran, tema hijau. Reports Laba Rugi menampilkan blok hijau "Pendapatan Lain-lain" + rincian kategori & catatan formula diperbarui. Kartu ekspor "Pendapatan Lain-lain" ditambahkan.
+- Verified: curl (kategori, create → profit-loss net 226rb = 186rb+40rb, monthly oi/net) + screenshot (halaman + dropdown 4 kategori + Laba Rugi blok hijau & Laba Bersih Rp226.000). Data uji dihapus.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.

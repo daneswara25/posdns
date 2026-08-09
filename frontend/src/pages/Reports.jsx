@@ -214,6 +214,20 @@ export default function Reports() {
               <span className="font-medium">Total Penjualan (Pemasukan)</span>
               <span className="font-semibold text-emerald-600" data-testid="pl-revenue">{rupiah(pl.revenue)}</span>
             </div>
+            {pl.other_income_total > 0 && (
+              <div className="rounded-md bg-emerald-500/5 p-3">
+                <div className="mb-1 flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
+                  <span>Pendapatan Lain-lain</span>
+                  <span data-testid="pl-other-income">Total: {rupiah(pl.other_income_total)}</span>
+                </div>
+                {pl.other_income_by_category.map((e) => (
+                  <div key={e.category} className="flex items-center justify-between py-0.5">
+                    <span className="text-muted-foreground">{e.category}</span>
+                    <span className="text-emerald-600">+ {rupiah(e.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="rounded-md bg-secondary/40 p-3">
               <div className="mb-1 flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
                 <span>Pengeluaran per Kategori</span>
@@ -234,7 +248,7 @@ export default function Reports() {
               <span className="font-display text-base font-bold">Laba Bersih</span>
               <span className={`font-display text-xl font-bold ${pl.net_profit >= 0 ? "text-emerald-600" : "text-destructive"}`} data-testid="pl-net-profit">{rupiah(pl.net_profit)}</span>
             </div>
-            <p className="text-[11px] text-muted-foreground">Laba Bersih = Total Penjualan − Total Pengeluaran. Referensi: Modal barang terjual (HPP) {rupiah(pl.hpp)}, Laba Kotor {rupiah(pl.gross_profit)}.</p>
+            <p className="text-[11px] text-muted-foreground">Laba Bersih = Total Penjualan + Pendapatan Lain-lain − Total Pengeluaran. Referensi: Modal barang terjual (HPP) {rupiah(pl.hpp)}, Laba Kotor {rupiah(pl.gross_profit)}.</p>
           </div>
         </div>
       )}
@@ -275,7 +289,7 @@ export default function Reports() {
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <p className="mt-2 text-[11px] text-muted-foreground">Laba Bersih = Total Penjualan − Total Pengeluaran per bulan.</p>
+        <p className="mt-2 text-[11px] text-muted-foreground">Laba Bersih = Total Penjualan + Pendapatan Lain-lain − Total Pengeluaran per bulan.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
-  Download, DownloadCloud, Receipt, ShoppingBag, ClipboardList, Wallet,
+  Download, DownloadCloud, Receipt, ShoppingBag, ClipboardList, Wallet, HandCoins,
   Warehouse, Package, Tags, UserCircle, Truck, Users as UsersIcon, History,
 } from "lucide-react";
 
@@ -14,6 +14,7 @@ const TRANSACTIONS = [
   { key: "orders", label: "Pesanan", desc: "Pesanan & deposit (DP)", icon: ShoppingBag, dateFilter: true },
   { key: "purchases", label: "Pembelian", desc: "Transaksi pembelian ke supplier", icon: ClipboardList, dateFilter: true },
   { key: "expenses", label: "Pengeluaran", desc: "Catatan biaya & pengeluaran", icon: Wallet, dateFilter: true },
+  { key: "other_income", label: "Pendapatan Lain-lain", desc: "Biaya layanan, express, komisi, dll", icon: HandCoins, dateFilter: true },
   { key: "stock_movements", label: "Mutasi Stok", desc: "Riwayat perubahan stok", icon: Warehouse, dateFilter: true },
   { key: "activities", label: "Log Aktivitas", desc: "Riwayat aktivitas pengguna", icon: History, dateFilter: true },
 ];

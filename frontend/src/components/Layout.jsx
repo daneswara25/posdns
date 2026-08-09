@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import {
   LayoutDashboard, Package, Tags, Warehouse, BarChart3, Users as UsersIcon,
   Settings as SettingsIcon, ShoppingCart, Sun, Moon, LogOut, Menu, X, Store,
-  UserCircle, Truck, ClipboardList, ShoppingBag, KeyRound, Wallet, DownloadCloud,
+  UserCircle, Truck, ClipboardList, ShoppingBag, KeyRound, Wallet, DownloadCloud, HandCoins,
 } from "lucide-react";
 
 const NAV = [
@@ -24,6 +24,7 @@ const NAV = [
   { to: "/supplier", label: "Supplier", icon: Truck, roles: ["Owner", "Manager", "Gudang"] },
   { to: "/pembelian", label: "Pembelian", icon: ClipboardList, roles: ["Owner", "Manager", "Gudang"] },
   { to: "/pengeluaran", label: "Pengeluaran", icon: Wallet, roles: ["Owner", "Manager"] },
+  { to: "/pendapatan-lain", label: "Pendapatan Lain-lain", icon: HandCoins, roles: ["Owner", "Manager"] },
   { to: "/laporan", label: "Laporan", icon: BarChart3, roles: ["Owner", "Manager"] },
   { to: "/ekspor", label: "Ekspor Data", icon: DownloadCloud, roles: ["Owner"] },
   { to: "/pengguna", label: "Pengguna", icon: UsersIcon, roles: ["Owner", "Manager"] },

@@ -19,6 +19,7 @@ import Suppliers from "@/pages/Suppliers";
 import Purchases from "@/pages/Purchases";
 import Orders from "@/pages/Orders";
 import Expenses from "@/pages/Expenses";
+import OtherIncome from "@/pages/OtherIncome";
 import ExportData from "@/pages/ExportData";
 
 function App() {
@@ -54,6 +55,7 @@ function App() {
                 <Route path="supplier" element={<ProtectedRoute roles={["Owner", "Manager", "Gudang"]}><Suppliers /></ProtectedRoute>} />
                 <Route path="pembelian" element={<ProtectedRoute roles={["Owner", "Manager", "Gudang"]}><Purchases /></ProtectedRoute>} />
                 <Route path="pengeluaran" element={<ProtectedRoute roles={["Owner", "Manager"]}><Expenses /></ProtectedRoute>} />
+                <Route path="pendapatan-lain" element={<ProtectedRoute roles={["Owner", "Manager"]}><OtherIncome /></ProtectedRoute>} />
                 <Route path="laporan" element={<ProtectedRoute roles={["Owner", "Manager"]}><Reports /></ProtectedRoute>} />
                 <Route path="ekspor" element={<ProtectedRoute roles={["Owner"]}><ExportData /></ProtectedRoute>} />
                 <Route path="pengguna" element={<ProtectedRoute roles={["Owner", "Manager"]}><Users /></ProtectedRoute>} />

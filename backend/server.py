@@ -570,7 +570,7 @@ async def report_monthly(user: dict = Depends(require_roles("Owner", "Manager"))
                          year: int = Query(...)):
     tid = user["tenant_id"]
     sales = await db.sales.find({"tenant_id": tid, "refunded": {"$ne": True}}, {"_id": 0}).to_list(20000)
-    months = [{"month": m, "total": 0, "profit": 0, "expense": 0, "net": 0, "count": 0} for m in range(1, 13)]
+    months = [{"month": m, "total": 0, "profit": 0, "expense": 0, "other_income": 0, "net": 0, "count": 0} for m in range(1, 13)]
     prefix = f"{year}-"
     for s in sales:
         created = s.get("created_at", "")
@@ -595,8 +595,19 @@ async def report_monthly(user: dict = Depends(require_roles("Owner", "Manager"))
             continue
         if 1 <= m <= 12:
             months[m - 1]["expense"] += e.get("amount", 0)
+    other_income = await db.other_income.find({"tenant_id": tid}, {"_id": 0}).to_list(20000)
+    for e in other_income:
+        d = e.get("date") or ""
+        if not d.startswith(prefix):
+            continue
+        try:
+            m = int(d[5:7])
+        except (ValueError, IndexError):
+            continue
+        if 1 <= m <= 12:
+            months[m - 1]["other_income"] += e.get("amount", 0)
     for mo in months:
-        mo["net"] = mo["total"] - mo["expense"]
+        mo["net"] = mo["total"] + mo["other_income"] - mo["expense"]
     return {"year": year, "months": months}
 
 
@@ -604,7 +615,7 @@ async def report_monthly(user: dict = Depends(require_roles("Owner", "Manager"))
 async def clear_transactions(user: dict = Depends(require_roles("Owner"))):
     tid = user["tenant_id"]
     result = {}
-    for coll in ["sales", "orders", "held_orders", "activities", "stock_movements", "expenses"]:
+    for coll in ["sales", "orders", "held_orders", "activities", "stock_movements", "expenses", "other_income"]:
         r = await db[coll].delete_many({"tenant_id": tid})
         result[coll] = r.deleted_count
     await log_activity(tid, user, "Reset Data Transaksi", "Semua transaksi percobaan dihapus")
@@ -616,6 +627,7 @@ EXPORT_COLLECTIONS = {
     "orders": "orders",
     "purchases": "purchases",
     "expenses": "expenses",
+    "other_income": "other_income",
     "stock_movements": "stock_movements",
     "products": "products",
     "categories": "categories",
@@ -625,7 +637,7 @@ EXPORT_COLLECTIONS = {
     "activities": "activities",
 }
 # Datasets that support created_at date-range filtering
-EXPORT_DATE_FILTERABLE = {"sales", "orders", "purchases", "expenses", "stock_movements", "activities"}
+EXPORT_DATE_FILTERABLE = {"sales", "orders", "purchases", "expenses", "other_income", "stock_movements", "activities"}
 
 
 def _csv_cell(v):
@@ -784,6 +796,56 @@ async def delete_expense(eid: str, user: dict = Depends(require_roles("Owner", "
     return {"ok": True}
 
 
+OTHER_INCOME_CATEGORIES = [
+    "Biaya layanan", "Biaya express", "Biaya tambahan/order khusus", "Pendapatan komisi",
+]
+
+
+class OtherIncomeInput(BaseModel):
+    category: str
+    amount: float
+    note: Optional[str] = ""
+    date: Optional[str] = None
+
+
+@api_router.get("/other-income-categories")
+async def other_income_categories(user: dict = Depends(get_current_user)):
+    return OTHER_INCOME_CATEGORIES
+
+
+@api_router.get("/other-income")
+async def list_other_income(user: dict = Depends(require_roles("Owner", "Manager")),
+                            start: Optional[str] = None, end: Optional[str] = None):
+    tid = user["tenant_id"]
+    items = await db.other_income.find({"tenant_id": tid}, {"_id": 0}).sort("date", -1).to_list(5000)
+    if start:
+        items = [e for e in items if (e.get("date") or "")[:10] >= start]
+    if end:
+        items = [e for e in items if (e.get("date") or "")[:10] <= end]
+    return items
+
+
+@api_router.post("/other-income")
+async def create_other_income(data: OtherIncomeInput, user: dict = Depends(require_roles("Owner", "Manager"))):
+    if data.amount <= 0:
+        raise HTTPException(status_code=400, detail="Nominal harus lebih dari 0")
+    doc = {
+        "id": new_id(), "tenant_id": user["tenant_id"], "category": data.category,
+        "amount": data.amount, "note": data.note or "",
+        "date": (data.date or now_iso())[:10] if data.date else now_iso()[:10],
+        "user_name": user.get("name", ""), "created_at": now_iso(),
+    }
+    await db.other_income.insert_one(doc)
+    await log_activity(user["tenant_id"], user, "Tambah Pendapatan Lain-lain", f"{data.category} - {data.amount}")
+    return clean(doc)
+
+
+@api_router.delete("/other-income/{eid}")
+async def delete_other_income(eid: str, user: dict = Depends(require_roles("Owner", "Manager"))):
+    await db.other_income.delete_one({"id": eid, "tenant_id": user["tenant_id"]})
+    return {"ok": True}
+
+
 @api_router.get("/reports/profit-loss")
 async def report_profit_loss(user: dict = Depends(require_roles("Owner", "Manager")),
                              start: Optional[str] = None, end: Optional[str] = None):
@@ -806,15 +868,28 @@ async def report_profit_loss(user: dict = Depends(require_roles("Owner", "Manage
         by_cat[e["category"]] = by_cat.get(e["category"], 0) + e["amount"]
     expense_total = sum(e["amount"] for e in expenses)
 
+    other_income = await db.other_income.find({"tenant_id": tid}, {"_id": 0}).to_list(5000)
+    if start:
+        other_income = [e for e in other_income if (e.get("date") or "")[:10] >= start]
+    if end:
+        other_income = [e for e in other_income if (e.get("date") or "")[:10] <= end]
+    oi_by_cat = {}
+    for e in other_income:
+        oi_by_cat[e["category"]] = oi_by_cat.get(e["category"], 0) + e["amount"]
+    other_income_total = sum(e["amount"] for e in other_income)
+
     return {
         "revenue": revenue,
         "hpp": hpp,
         "gross_profit": revenue - hpp,
         "expense_total": expense_total,
         "expenses_by_category": [{"category": k, "amount": v} for k, v in by_cat.items()],
-        "net_profit": revenue - expense_total,
+        "other_income_total": other_income_total,
+        "other_income_by_category": [{"category": k, "amount": v} for k, v in oi_by_cat.items()],
+        "net_profit": revenue + other_income_total - expense_total,
         "sales_count": len(sales),
         "expense_count": len(expenses),
+        "other_income_count": len(other_income),
     }
 
 
