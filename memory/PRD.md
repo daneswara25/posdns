@@ -215,6 +215,12 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - ADDED (frontend): halaman `OtherIncome.jsx` (route `/pendapatan-lain`, menu sidebar "Pendapatan Lain-lain" ikon HandCoins, Owner/Manager) — mirror Pengeluaran, tema hijau. Reports Laba Rugi menampilkan blok hijau "Pendapatan Lain-lain" + rincian kategori & catatan formula diperbarui. Kartu ekspor "Pendapatan Lain-lain" ditambahkan.
 - Verified: curl (kategori, create → profit-loss net 226rb = 186rb+40rb, monthly oi/net) + screenshot (halaman + dropdown 4 kategori + Laba Rugi blok hijau & Laba Bersih Rp226.000). Data uji dihapus.
 
+## Update (2026-06) — Redesign posdns.html tema VINTAGE (beda dari aplikasi)
+- CHANGED (`frontend/public/posdns.html`, dibangun ulang via skrip generator sementara agar logo base64 & SYSTEM_URL utuh): Tampilan login standalone kini bertema **vintage/retro** dan sengaja BERBEDA dari halaman login aplikasi React.
+  - Latar kertas krem + tekstur grain (SVG noise) + vignette. Kartu tengah berbingkai ganda dengan hiasan sudut siku. Badge logo bundar (ring ganda). Font Playfair Display (judul) + Special Elite (mesin tik). Palet: krem #efe6d3, tinta coklat #2c241d, aksen rust #a4472c, teal #2f5d57. Tombol "MASUK" rust dengan bayangan retro.
+  - Tetap "Daneswara POS" + tagline. 100% standalone; logika JS login (fetch ke SYSTEM_URL `pos-retail-platform.emergent.host`, redirect `?token=`) & id elemen (loginForm/submitBtn/msg/username/password) tidak diubah.
+- Verified: screenshot `localhost:3000/posdns.html` (layout vintage, form+tombol ada, h1 benar). CATATAN: file ini di-hosting user di www.daneswara.com — harus diunggah ulang manual agar berubah di domain tsb.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
