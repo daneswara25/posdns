@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Receipt, Undo2, FileSpreadsheet, FileText, Scale, Landmark } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -30,6 +31,7 @@ export default function Reports() {
   const [year, setYear] = useState(now.getFullYear());
   const [trend, setTrend] = useState([]);
   const [pl, setPl] = useState(null);
+  const [detailSale, setDetailSale] = useState(null);
 
   const loadPL = (params) => {
     api.get("/reports/profit-loss", { params }).then((r) => setPl(r.data));
@@ -318,14 +320,14 @@ export default function Reports() {
               </thead>
               <tbody>
                 {rep.sales.map((s) => (
-                  <tr key={s.id} className="border-t border-border" data-testid={`sale-row-${s.id}`}>
+                  <tr key={s.id} className="cursor-pointer border-t border-border transition-colors hover:bg-secondary/50" data-testid={`sale-row-${s.id}`} onClick={() => setDetailSale(s)}>
                     <td className="py-2 font-medium">{s.invoice}</td>
                     <td className="py-2 text-muted-foreground">{s.payment_method}</td>
                     <td className="py-2 text-right font-semibold">{rupiah(s.total)}</td>
                     <td className="py-2 text-right text-xs text-muted-foreground">{new Date(s.created_at).toLocaleString("id-ID")}</td>
                     <td className="py-2 text-right">
                       {canRefund && !s.refunded && (
-                        <Button variant="ghost" size="icon" onClick={() => refund(s.id)} data-testid={`refund-${s.id}`} title="Refund"><Undo2 className="h-4 w-4 text-destructive" /></Button>
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); refund(s.id); }} data-testid={`refund-${s.id}`} title="Refund"><Undo2 className="h-4 w-4 text-destructive" /></Button>
                       )}
                       {s.refunded && <span className="text-xs text-destructive">Refunded</span>}
                     </td>
@@ -337,6 +339,66 @@ export default function Reports() {
           </div>
         </div>
       </div>
+
+      <Dialog open={!!detailSale} onOpenChange={(o) => { if (!o) { setDetailSale(null); setTimeout(() => { document.body.style.pointerEvents = ""; }, 100); } }}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" data-testid="sale-detail-dialog">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <Receipt className="h-5 w-5 text-primary" /> Detail Transaksi
+            </DialogTitle>
+          </DialogHeader>
+          {detailSale && (
+            <div className="space-y-4 text-sm" data-testid="sale-detail-content">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-display text-lg font-bold">{detailSale.invoice}</p>
+                  <p className="text-xs text-muted-foreground">{new Date(detailSale.created_at).toLocaleString("id-ID")}</p>
+                </div>
+                {detailSale.refunded
+                  ? <span className="rounded-full bg-destructive/10 px-3 py-1 text-xs font-semibold text-destructive">Refunded</span>
+                  : <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600">Lunas</span>}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 rounded-md bg-secondary/40 p-3 text-xs">
+                <div><span className="text-muted-foreground">Kasir</span><p className="font-medium">{detailSale.cashier || "-"}</p></div>
+                <div><span className="text-muted-foreground">Metode</span><p className="font-medium">{detailSale.payment_method}</p></div>
+                <div><span className="text-muted-foreground">Pelanggan</span><p className="font-medium">{detailSale.customer_name || "Umum"}</p></div>
+                <div><span className="text-muted-foreground">No. HP</span><p className="font-medium">{detailSale.customer_phone || "-"}</p></div>
+              </div>
+
+              <div className="overflow-hidden rounded-md border border-border">
+                <table className="w-full text-sm">
+                  <thead className="bg-secondary/60 text-xs uppercase text-muted-foreground">
+                    <tr><th className="px-3 py-2 text-left">Item</th><th className="px-3 py-2 text-center">Qty</th><th className="px-3 py-2 text-right">Harga</th><th className="px-3 py-2 text-right">Subtotal</th></tr>
+                  </thead>
+                  <tbody>
+                    {(detailSale.items || []).map((it, idx) => (
+                      <tr key={idx} className="border-t border-border" data-testid={`sale-detail-item-${idx}`}>
+                        <td className="px-3 py-2">
+                          <p className="font-medium">{it.name}</p>
+                          {it.note && <p className="text-xs text-muted-foreground">{it.note}</p>}
+                        </td>
+                        <td className="px-3 py-2 text-center">{it.qty}</td>
+                        <td className="px-3 py-2 text-right">{rupiah(it.price)}</td>
+                        <td className="px-3 py-2 text-right font-semibold">{rupiah((it.price || 0) * (it.qty || 0))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{rupiah(detailSale.subtotal || 0)}</span></div>
+                {(detailSale.discount || 0) > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Diskon</span><span className="text-destructive">- {rupiah(detailSale.discount)}</span></div>}
+                {(detailSale.tax || 0) > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Pajak ({detailSale.tax_rate || 0}%)</span><span>{rupiah(detailSale.tax)}</span></div>}
+                <div className="flex justify-between border-t border-border pt-2 text-base font-bold"><span>Total</span><span data-testid="sale-detail-total">{rupiah(detailSale.total)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Dibayar</span><span>{rupiah(detailSale.paid_amount || 0)}</span></div>
+                {(detailSale.change || 0) > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Kembalian</span><span>{rupiah(detailSale.change)}</span></div>}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

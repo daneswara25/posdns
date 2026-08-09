@@ -221,6 +221,10 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
   - Tetap "Daneswara POS" + tagline. 100% standalone; logika JS login (fetch ke SYSTEM_URL `pos-retail-platform.emergent.host`, redirect `?token=`) & id elemen (loginForm/submitBtn/msg/username/password) tidak diubah.
 - Verified: screenshot `localhost:3000/posdns.html` (layout vintage, form+tombol ada, h1 benar). CATATAN: file ini di-hosting user di www.daneswara.com — harus diunggah ulang manual agar berubah di domain tsb.
 
+## Update (2026-06) — Detail transaksi di Riwayat Transaksi (Laporan)
+- ADDED (`Reports.jsx`): Setiap baris di tabel "Riwayat Transaksi" kini dapat diklik (cursor-pointer + hover) untuk membuka dialog **Detail Transaksi** (`sale-detail-dialog`): invoice, waktu, badge status (Lunas/Refunded), Kasir, Metode, Pelanggan+No.HP, tabel item (nama, catatan, qty, harga, subtotal), lalu Subtotal, Diskon, Pajak, Total, Dibayar, Kembalian. Data diambil dari `rep.sales` (tanpa ubah backend). Tombol Refund pakai `stopPropagation` agar tidak ikut membuka detail. Cleanup `pointerEvents` saat dialog ditutup (anti Radix lock).
+- Verified: screenshot (klik baris → dialog menampilkan item APRON - Drill SS, Total Rp62.000, Dibayar Rp200.000, Kembalian Rp138.000).
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
