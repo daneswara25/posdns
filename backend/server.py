@@ -570,7 +570,7 @@ async def report_monthly(user: dict = Depends(require_roles("Owner", "Manager"))
                          year: int = Query(...)):
     tid = user["tenant_id"]
     sales = await db.sales.find({"tenant_id": tid, "refunded": {"$ne": True}}, {"_id": 0}).to_list(20000)
-    months = [{"month": m, "total": 0, "profit": 0, "count": 0} for m in range(1, 13)]
+    months = [{"month": m, "total": 0, "profit": 0, "expense": 0, "net": 0, "count": 0} for m in range(1, 13)]
     prefix = f"{year}-"
     for s in sales:
         created = s.get("created_at", "")
@@ -584,6 +584,19 @@ async def report_monthly(user: dict = Depends(require_roles("Owner", "Manager"))
             months[m - 1]["total"] += s["total"]
             months[m - 1]["profit"] += s.get("profit", 0)
             months[m - 1]["count"] += 1
+    expenses = await db.expenses.find({"tenant_id": tid}, {"_id": 0}).to_list(20000)
+    for e in expenses:
+        d = e.get("date") or ""
+        if not d.startswith(prefix):
+            continue
+        try:
+            m = int(d[5:7])
+        except (ValueError, IndexError):
+            continue
+        if 1 <= m <= 12:
+            months[m - 1]["expense"] += e.get("amount", 0)
+    for mo in months:
+        mo["net"] = mo["total"] - mo["expense"]
     return {"year": year, "months": months}
 
 

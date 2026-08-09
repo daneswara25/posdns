@@ -203,6 +203,11 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - ADDED (frontend): Halaman `ExportData.jsx` (route `/ekspor`, menu sidebar "Ekspor Data" Owner-only) — filter tanggal dari–sampai (berlaku utk transaksi), kartu per dataset dgn tombol "CSV", dan tombol "Unduh Semua CSV" (unduh semua berurutan). testid: `export-card-<key>`, `export-btn-<key>`, `export-all-button`, `export-start`, `export-end`.
 - Verified: curl (products/sales/users CSV, filter tanggal → header saja utk rentang kosong, 404 utk dataset salah, gambar ter-strip); screenshot + unduhan nyata (`products_2026-08-09.csv`).
 
+## Update (2026-06) — Grafik Tren Laba Bersih & Pengeluaran (Laporan)
+- CHANGED (backend `/reports/monthly`): tiap bulan kini juga menghitung `expense` (dari `db.expenses` via field `date`) dan `net` (= total penjualan − pengeluaran). `profit` (laba kotor) tetap ada.
+- ADDED (`Reports.jsx`): kartu grafik baru **"Tren Laba Bersih & Pengeluaran {year}"** (`net-profit-trend-chart`) — BarChart 2 seri: Laba Bersih (hijau) & Pengeluaran (merah) per bulan, dengan legenda + ringkasan "Laba Bersih setahun". Diletakkan setelah grafik "Tren Omzet Bulanan".
+- Verified: curl (Agu: total 186rb, expense 75rb → net 111rb) + screenshot (dua grafik tampil benar). Pengeluaran uji sudah dihapus agar data bersih.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.

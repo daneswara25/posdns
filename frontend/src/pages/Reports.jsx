@@ -257,6 +257,27 @@ export default function Reports() {
         </div>
       </div>
 
+      <div className="rounded-lg border border-border bg-card p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="font-display font-semibold">Tren Laba Bersih &amp; Pengeluaran {year}</h3>
+          <span className="text-xs text-muted-foreground">Laba Bersih setahun: {rupiah(trendData.reduce((a, m) => a + (m.net || 0), 0))}</span>
+        </div>
+        <div className="h-72" data-testid="net-profit-trend-chart">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={trendData} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={70} tickFormatter={(v) => Math.abs(v) >= 1000000 ? `${(v / 1000000).toFixed(1)}jt` : Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}rb` : v} />
+              <Tooltip formatter={(v, name) => [rupiah(v), name]} cursor={{ fill: "hsl(var(--secondary))" }} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Bar dataKey="net" name="Laba Bersih" fill="#10B981" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="expense" name="Pengeluaran" fill="#EF4444" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <p className="mt-2 text-[11px] text-muted-foreground">Laba Bersih = Total Penjualan − Total Pengeluaran per bulan.</p>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="rounded-lg border border-border bg-card p-5">
           <h3 className="font-display font-semibold">Metode Pembayaran</h3>
