@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { Receipt, Undo2, FileSpreadsheet, FileText, Scale, Landmark } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Receipt, Undo2, FileSpreadsheet, FileText, Scale, Landmark, Printer } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { printReceiptSmart } from "@/lib/printer";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -32,6 +33,8 @@ export default function Reports() {
   const [trend, setTrend] = useState([]);
   const [pl, setPl] = useState(null);
   const [detailSale, setDetailSale] = useState(null);
+  const [settings, setSettings] = useState({});
+  const [printing, setPrinting] = useState(false);
 
   const loadPL = (params) => {
     api.get("/reports/profit-loss", { params }).then((r) => setPl(r.data));
@@ -47,6 +50,21 @@ export default function Reports() {
     api.get("/reports/monthly", { params: { year: y } }).then((r) => setTrend(r.data.months));
   };
   useEffect(() => { load(); loadTrend(year); }, []);
+
+  useEffect(() => { api.get("/settings").then((r) => setSettings(r.data || {})).catch(() => {}); }, []);
+
+  const reprint = async () => {
+    if (!detailSale) return;
+    setPrinting(true);
+    try {
+      const mode = await printReceiptSmart(detailSale, settings);
+      if (mode === "bluetooth") toast.success("Struk dikirim ke printer Bluetooth");
+    } catch (e) {
+      toast.error(e.message || "Gagal mencetak struk");
+    } finally {
+      setPrinting(false);
+    }
+  };
 
   const loadMonth = () => {
     const s = `${year}-${String(month).padStart(2, "0")}-01`;
@@ -397,6 +415,11 @@ export default function Reports() {
               </div>
             </div>
           )}
+          <DialogFooter>
+            <Button onClick={reprint} disabled={printing} className="w-full gap-2" data-testid="reprint-receipt-button">
+              <Printer className="h-4 w-4" /> {printing ? "Mencetak..." : "Cetak Ulang Struk"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

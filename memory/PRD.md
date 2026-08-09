@@ -225,6 +225,10 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - ADDED (`Reports.jsx`): Setiap baris di tabel "Riwayat Transaksi" kini dapat diklik (cursor-pointer + hover) untuk membuka dialog **Detail Transaksi** (`sale-detail-dialog`): invoice, waktu, badge status (Lunas/Refunded), Kasir, Metode, Pelanggan+No.HP, tabel item (nama, catatan, qty, harga, subtotal), lalu Subtotal, Diskon, Pajak, Total, Dibayar, Kembalian. Data diambil dari `rep.sales` (tanpa ubah backend). Tombol Refund pakai `stopPropagation` agar tidak ikut membuka detail. Cleanup `pointerEvents` saat dialog ditutup (anti Radix lock).
 - Verified: screenshot (klik baris → dialog menampilkan item APRON - Drill SS, Total Rp62.000, Dibayar Rp200.000, Kembalian Rp138.000).
 
+## Update (2026-06) — Cetak Ulang Struk dari Detail Transaksi
+- ADDED (`Reports.jsx`): Tombol **"Cetak Ulang Struk"** (`reprint-receipt-button`) di footer dialog Detail Transaksi. Memuat `settings` dari `GET /settings` dan memanggil `printReceiptSmart(detailSale, settings)` (logika sama persis dgn cetak struk di POS): mode Bluetooth thermal (ESC/POS) bila diset di Pengaturan, selain itu cetak desktop. Toast sukses/gagal. Tidak ada perubahan backend.
+- Verified: screenshot (tombol tampil di dialog detail). Catatan: cetak fisik butuh printer terhubung / mode cetak sesuai Pengaturan — fungsi identik dengan yang sudah teruji di checkout POS.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
