@@ -178,6 +178,13 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 ## Pending (menunggu keputusan user)
 - Fitur "Lupa password" di halaman Login (aplikasi & posdns) — menunggu user memilih mekanisme (Hubungi Admin / Email / WhatsApp).
 
+## Update (2026-06) — Logo tanpa frame + metode pembayaran Bank Transfer
+- CHANGED (logo): Kotak/frame hitam di belakang logo dihapus di `posdns.html` (`.hero .logo` → tanpa background/backdrop/ring) dan `Login.jsx` (hero logo & mobile brand logo → tanpa `bg-black/40`/`bg-neutral-900`). Logo tampil polos.
+- CHANGED (metode pembayaran): "Kartu" DIGANTI menjadi **Bank Transfer** dengan 3 sub-rekening: **BCA TOKO**, **BRI TOKO**, **BCA ADMIN (ELIS)**.
+  - Backend (`server.py`): `Literal` payment_method & deposit_method (3 tempat) kini `["Tunai","BCA TOKO","BRI TOKO","BCA ADMIN (ELIS)","QRIS","E-Wallet"]` (Kartu dihapus). Data lama ber-metode "Kartu" tetap aman di laporan (validasi hanya saat input).
+  - Frontend (`POS.jsx`): `METHODS=["Tunai","Bank Transfer","QRIS","E-Wallet"]` + `BANKS=[3 rekening]`. Helper `renderMethodPicker(prefix)` dipakai di dialog Pembayaran & Deposit — memilih "Bank Transfer" menampilkan 3 tombol rekening (nilai `method` = rekening spesifik, tersimpan & tercetak di struk). testid: `pay-method-Bank Transfer`, `pay-bank-options`, `pay-bank-<nama>`, dan varian `deposit-*`.
+- Verified: curl (sale BCA TOKO → 200, Kartu → 422; sale uji di-refund agar data bersih); screenshot (dialog pembayaran menampilkan 3 rekening; urutan kategori POS mengikuti reorder).
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.

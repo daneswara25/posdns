@@ -158,7 +158,7 @@ class SaleInput(BaseModel):
     items: List[SaleItem]
     discount: float = 0
     tax_rate: float = 0
-    payment_method: Literal["Tunai", "Kartu", "QRIS", "E-Wallet"]
+    payment_method: Literal["Tunai", "BCA TOKO", "BRI TOKO", "BCA ADMIN (ELIS)", "QRIS", "E-Wallet"]
     paid_amount: float = 0
     customer_name: Optional[str] = ""
     customer_id: Optional[str] = None
@@ -227,12 +227,12 @@ class CustomOrderInput(BaseModel):
     discount: float = 0
     tax_rate: float = 0
     deposit_amount: float = 0
-    deposit_method: Literal["Tunai", "Kartu", "QRIS", "E-Wallet"] = "Tunai"
+    deposit_method: Literal["Tunai", "BCA TOKO", "BRI TOKO", "BCA ADMIN (ELIS)", "QRIS", "E-Wallet"] = "Tunai"
     note: Optional[str] = ""
 
 
 class SettleOrderInput(BaseModel):
-    payment_method: Literal["Tunai", "Kartu", "QRIS", "E-Wallet"]
+    payment_method: Literal["Tunai", "BCA TOKO", "BRI TOKO", "BCA ADMIN (ELIS)", "QRIS", "E-Wallet"]
     paid_amount: float = 0
 
 

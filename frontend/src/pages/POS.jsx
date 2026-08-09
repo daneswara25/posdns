@@ -20,7 +20,9 @@ import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@
 import { toast } from "sonner";
 import { Search, Plus, Minus, Trash2, X, ArrowLeft, ShoppingCart, ScanLine, CheckCircle2, PauseCircle, PlayCircle, HandCoins, Copy, MessageCircle, UserPlus, Check, ChevronsUpDown, Grid2x2, Grid3x3, LayoutGrid, Pencil } from "lucide-react";
 
-const METHODS = ["Tunai", "Kartu", "QRIS", "E-Wallet"];
+const METHODS = ["Tunai", "Bank Transfer", "QRIS", "E-Wallet"];
+const BANKS = ["BCA TOKO", "BRI TOKO", "BCA ADMIN (ELIS)"];
+const isBank = (m) => BANKS.includes(m);
 
 const POS_GRID = {
   besar: "grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6",
@@ -258,6 +260,44 @@ export default function POS() {
     setPaid(method === "Tunai" ? "" : total);
     setPayOpen(true);
   };
+
+  const pickMethod = (m) => {
+    if (m === "Bank Transfer") { setMethod(BANKS[0]); setPaid(total); }
+    else { setMethod(m); setPaid(m === "Tunai" ? "" : total); }
+  };
+  const renderMethodPicker = (prefix) => (
+    <div className="mt-2 space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        {METHODS.map((m) => {
+          const active = m === "Bank Transfer" ? isBank(method) : method === m;
+          return (
+            <button
+              key={m}
+              onClick={() => pickMethod(m)}
+              className={`rounded-md border py-3 text-sm font-semibold transition-colors duration-200 ${active ? "border-primary bg-accent text-accent-foreground" : "border-border"}`}
+              data-testid={`${prefix}-method-${m}`}
+            >
+              {m}
+            </button>
+          );
+        })}
+      </div>
+      {isBank(method) && (
+        <div className="grid grid-cols-3 gap-2" data-testid={`${prefix}-bank-options`}>
+          {BANKS.map((b) => (
+            <button
+              key={b}
+              onClick={() => { setMethod(b); setPaid(total); }}
+              className={`rounded-md border px-2 py-2 text-xs font-semibold transition-colors duration-200 ${method === b ? "border-primary bg-accent text-accent-foreground" : "border-border"}`}
+              data-testid={`${prefix}-bank-${b}`}
+            >
+              {b}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
   const submitPay = async () => {
     if (method === "Tunai" && Number(paid) < total)
@@ -718,18 +758,7 @@ export default function POS() {
           <div className="space-y-4">
             <div>
               <Label className="text-xs uppercase tracking-widest text-muted-foreground">Metode Pembayaran</Label>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {METHODS.map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => { setMethod(m); setPaid(m === "Tunai" ? "" : total); }}
-                    className={`rounded-md border py-3 text-sm font-semibold transition-colors duration-200 ${method === m ? "border-primary bg-accent text-accent-foreground" : "border-border"}`}
-                    data-testid={`pay-method-${m}`}
-                  >
-                    {m}
-                  </button>
-                ))}
-              </div>
+              {renderMethodPicker("pay")}
             </div>
             {method === "Tunai" && (
               <div>
@@ -762,11 +791,7 @@ export default function POS() {
             <p className="text-sm text-muted-foreground">Simpan pesanan dengan uang muka. Sisa dilunasi saat pesanan selesai (menu Pesanan).</p>
             <div>
               <Label className="text-xs uppercase tracking-widest text-muted-foreground">Metode Deposit</Label>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {METHODS.map((m) => (
-                  <button key={m} onClick={() => setMethod(m)} className={`rounded-md border py-3 text-sm font-semibold transition-colors duration-200 ${method === m ? "border-primary bg-accent text-accent-foreground" : "border-border"}`} data-testid={`deposit-method-${m}`}>{m}</button>
-                ))}
-              </div>
+              {renderMethodPicker("deposit")}
             </div>
             <div className="space-y-1">
               <Label>Nominal Deposit (DP)</Label>
