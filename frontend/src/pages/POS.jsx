@@ -199,6 +199,10 @@ export default function POS() {
     setCart((c) =>
       c.map((x) => (x.lineId === lineId ? { ...x, qty: Math.max(1, x.qty + delta) } : x))
     );
+  const setQtyAbs = (lineId, val) => {
+    const n = Math.max(1, Math.floor(Number(val) || 1));
+    setCart((c) => c.map((x) => (x.lineId === lineId ? { ...x, qty: n } : x)));
+  };
   const removeItem = (lineId) => setCart((c) => c.filter((x) => x.lineId !== lineId));
 
   const addTemp = (p) => {
@@ -214,6 +218,10 @@ export default function POS() {
   };
   const decTemp = (pid) =>
     setTempItems((t) => t.map((x) => (x.product.id === pid ? { ...x, qty: x.qty - 1 } : x)).filter((x) => x.qty > 0));
+  const setTempQty = (p, val) => {
+    const n = Math.max(1, Math.floor(Number(val) || 1));
+    setTempItems((t) => t.map((x) => (x.product.id === p.id ? { ...x, qty: n } : x)));
+  };
   const commitVariants = () => {
     const note = variantNote.trim();
     if (tempItems.length) {
@@ -514,7 +522,16 @@ export default function POS() {
                   <button onClick={() => setQty(i.lineId, -1)} className="flex h-7 w-7 items-center justify-center rounded-md bg-secondary" data-testid={`cart-minus-${i.product_id}`}>
                     <Minus className="h-3.5 w-3.5" />
                   </button>
-                  <span className="w-6 text-center text-sm font-semibold">{i.qty}</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    value={i.qty}
+                    onChange={(e) => setQtyAbs(i.lineId, e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    className="h-7 w-12 rounded-md border border-border bg-background text-center text-sm font-semibold"
+                    data-testid={`cart-qty-input-${i.product_id}`}
+                  />
                   <button onClick={() => setQty(i.lineId, 1)} className="flex h-7 w-7 items-center justify-center rounded-md bg-secondary" data-testid={`cart-plus-${i.product_id}`}>
                     <Plus className="h-3.5 w-3.5" />
                   </button>
@@ -719,7 +736,16 @@ export default function POS() {
                     {inTemp ? (
                       <div className="flex shrink-0 items-center gap-1.5">
                         <button onClick={() => decTemp(p.id)} className="flex h-7 w-7 items-center justify-center rounded-md bg-secondary" data-testid={`variant-minus-${p.id}`}><Minus className="h-3.5 w-3.5" /></button>
-                        <span className="w-5 text-center text-sm font-semibold" data-testid={`variant-qty-${p.id}`}>{inTemp.qty}</span>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min="1"
+                          value={inTemp.qty}
+                          onChange={(e) => setTempQty(p, e.target.value)}
+                          onFocus={(e) => e.target.select()}
+                          className="h-7 w-11 rounded-md border border-border bg-background text-center text-sm font-semibold"
+                          data-testid={`variant-qty-${p.id}`}
+                        />
                         <button onClick={() => addTemp(p)} className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground" data-testid={`variant-plus-${p.id}`}><Plus className="h-3.5 w-3.5" /></button>
                       </div>
                     ) : (
@@ -812,7 +838,6 @@ export default function POS() {
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground">{priceModal?.product?.name}</span>
-              {priceModal?.product?.cost ? ` · Modal ${rupiah(priceModal.product.cost)}` : ""}
             </p>
             <div className="space-y-1">
               <Label>Harga Jual (Rp)</Label>

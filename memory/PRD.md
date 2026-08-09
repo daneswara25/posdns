@@ -185,6 +185,13 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
   - Frontend (`POS.jsx`): `METHODS=["Tunai","Bank Transfer","QRIS","E-Wallet"]` + `BANKS=[3 rekening]`. Helper `renderMethodPicker(prefix)` dipakai di dialog Pembayaran & Deposit — memilih "Bank Transfer" menampilkan 3 tombol rekening (nilai `method` = rekening spesifik, tersimpan & tercetak di struk). testid: `pay-method-Bank Transfer`, `pay-bank-options`, `pay-bank-<nama>`, dan varian `deposit-*`.
 - Verified: curl (sale BCA TOKO → 200, Kartu → 422; sale uji di-refund agar data bersih); screenshot (dialog pembayaran menampilkan 3 rekening; urutan kategori POS mengikuti reorder).
 
+## Update (2026-06) — POS: hapus label modal + jumlah item bisa diketik manual
+- CHANGED (`POS.jsx`): Label "· Modal Rp..." dihapus dari dialog input harga manual POS (`price-dialog`) — kini hanya menampilkan nama produk.
+- ADDED (input jumlah manual): Jumlah item kini bisa DIKETIK langsung (untuk input qty banyak), selain tombol +/-.
+  - Keranjang: `<input type=number>` `data-testid="cart-qty-input-<pid>"` + helper `setQtyAbs(lineId,val)` (clamp min 1, select-all saat fokus).
+  - Dialog varian: qty jadi `<input>` `data-testid="variant-qty-<pid>"` + helper `setTempQty(p,val)` (clamp min 1). Footer "Selesai — Tambah N item" mengikuti.
+- Verified: screenshot — ketik "25" di qty varian → footer "Tambah 25 item". Pola input keranjang identik.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
