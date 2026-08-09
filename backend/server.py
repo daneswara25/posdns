@@ -349,12 +349,27 @@ async def delete_category(cid: str, user: dict = Depends(require_roles("Owner", 
 # ---------- Products ----------
 @api_router.get("/products")
 async def list_products(user: dict = Depends(get_current_user)):
-    return await db.products.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).sort("created_at", -1).to_list(2000)
+    prods = await db.products.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).to_list(2000)
+    prods.sort(key=lambda p: (p.get("sort_order") if p.get("sort_order") is not None else 10**9, (p.get("name") or "").lower()))
+    return prods
+
+
+class ReorderInput(BaseModel):
+    ids: list
+
+
+@api_router.post("/products/reorder")
+async def reorder_products(data: ReorderInput, user: dict = Depends(require_roles("Owner", "Manager", "Gudang"))):
+    for idx, pid in enumerate(data.ids):
+        await db.products.update_one({"id": pid, "tenant_id": user["tenant_id"]}, {"$set": {"sort_order": idx}})
+    await log_activity(user["tenant_id"], user, "Atur Urutan Produk", f"{len(data.ids)} produk diurutkan ulang")
+    return {"ok": True, "count": len(data.ids)}
 
 
 @api_router.post("/products")
 async def create_product(data: ProductInput, user: dict = Depends(require_roles("Owner", "Manager", "Gudang"))):
-    doc = {"id": new_id(), "tenant_id": user["tenant_id"], **data.model_dump(), "created_at": now_iso()}
+    count = await db.products.count_documents({"tenant_id": user["tenant_id"]})
+    doc = {"id": new_id(), "tenant_id": user["tenant_id"], **data.model_dump(), "sort_order": count, "created_at": now_iso()}
     await db.products.insert_one(doc)
     await log_activity(user["tenant_id"], user, "Tambah Produk", data.name)
     return clean(doc)

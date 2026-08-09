@@ -13,7 +13,7 @@ import {
 import { toast } from "sonner";
 import { NumberInput } from "@/components/NumberInput";
 import { ViewToggle, useViewMode } from "@/components/ViewToggle";
-import { Plus, Pencil, Trash2, Search, Package } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Package, ListOrdered, ChevronUp, ChevronDown } from "lucide-react";
 
 const EMPTY = { name: "", sku: "", barcode: "", category_id: "", price: "", cost: "", stock: 0, min_stock: 5, unit: "pcs", image: "", active: true };
 
@@ -36,33 +36,6 @@ export default function Products() {
 
   const openNew = () => { setForm(EMPTY); setEditId(null); setOpen(true); };
   const openEdit = (p) => { setForm({ ...p, category_id: p.category_id || "" }); setEditId(p.id); setOpen(true); };
-
-  const handleImage = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) return toast.error("File harus berupa gambar");
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const img = new Image();
-      img.onload = () => {
-        const MAX = 400;
-        let { width, height } = img;
-        if (width > height && width > MAX) { height = Math.round((height * MAX) / width); width = MAX; }
-        else if (height > MAX) { width = Math.round((width * MAX) / height); height = MAX; }
-        const canvas = document.createElement("canvas");
-        canvas.width = width; canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
-        const compressed = canvas.toDataURL("image/jpeg", 0.5);
-        setForm((f) => ({ ...f, image: compressed }));
-      };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
-  };
 
   const save = async () => {
     if (!form.name) return toast.error("Nama produk wajib diisi");
@@ -92,6 +65,40 @@ export default function Products() {
 
   const catName = (id) => cats.find((c) => c.id === id)?.name || "-";
   const catThumb = (id) => cats.find((c) => c.id === id)?.image || null;
+
+  const [reorderOpen, setReorderOpen] = useState(false);
+  const [reorderCat, setReorderCat] = useState("");
+  const [reorderList, setReorderList] = useState([]);
+  const catsWithProducts = cats.filter((c) => products.some((p) => (p.category_id || "") === c.id));
+  const hasUncategorized = products.some((p) => !p.category_id);
+  const buildReorder = (catId) => {
+    setReorderCat(catId);
+    setReorderList(products.filter((p) => (p.category_id || "none") === catId || (catId === "none" && !p.category_id)));
+  };
+  const openReorder = () => {
+    const first = catsWithProducts[0]?.id || (hasUncategorized ? "none" : "");
+    buildReorder(first);
+    setReorderOpen(true);
+  };
+  const moveItem = (idx, dir) => {
+    setReorderList((list) => {
+      const j = idx + dir;
+      if (j < 0 || j >= list.length) return list;
+      const next = [...list];
+      [next[idx], next[j]] = [next[j], next[idx]];
+      return next;
+    });
+  };
+  const saveReorder = async () => {
+    try {
+      await api.post("/products/reorder", { ids: reorderList.map((p) => p.id) });
+      toast.success("Urutan produk disimpan");
+      setReorderOpen(false);
+      load();
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail));
+    }
+  };
   const filtered = products.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()));
 
   return (
@@ -102,9 +109,14 @@ export default function Products() {
           <h1 className="font-display text-3xl font-bold tracking-tight">Produk</h1>
         </div>
         {canEdit && (
-          <Button onClick={openNew} className="gap-2" data-testid="add-product-button">
-            <Plus className="h-4 w-4" /> Tambah Produk
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={openReorder} className="gap-2" data-testid="reorder-products-button">
+              <ListOrdered className="h-4 w-4" /> Atur Urutan
+            </Button>
+            <Button onClick={openNew} className="gap-2" data-testid="add-product-button">
+              <Plus className="h-4 w-4" /> Tambah Produk
+            </Button>
+          </div>
         )}
       </div>
 
@@ -217,21 +229,47 @@ export default function Products() {
             <div className="space-y-1"><Label>Stok</Label><NumberInput value={form.stock} onValueChange={(v) => setForm({ ...form, stock: v })} data-testid="product-stock-input" /></div>
             <div className="space-y-1"><Label>Min. Stok</Label><NumberInput value={form.min_stock} onValueChange={(v) => setForm({ ...form, min_stock: v })} /></div>
             <div className="space-y-1"><Label>Satuan</Label><Input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} /></div>
-            <div className="col-span-2 space-y-2">
-              <Label>Gambar Produk <span className="text-muted-foreground">(otomatis dikompres)</span></Label>
-              <div className="flex items-center gap-3">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-secondary">
-                  {form.image ? <img src={form.image} alt="" className="h-full w-full object-cover" /> : <span className="text-xs text-muted-foreground">Kosong</span>}
-                </div>
-                <div className="flex-1 space-y-1">
-                  <Input type="file" accept="image/*" onChange={handleImage} data-testid="product-image-input" />
-                  {form.image && <button type="button" onClick={() => setForm({ ...form, image: "" })} className="text-xs text-destructive">Hapus gambar</button>}
-                </div>
-              </div>
-            </div>
           </div>
           <DialogFooter>
             <Button onClick={save} className="w-full" data-testid="save-product-button">Simpan</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={reorderOpen} onOpenChange={(o) => { setReorderOpen(o); if (!o) setTimeout(() => { document.body.style.pointerEvents = ""; }, 100); }}>
+        <DialogContent className="max-h-[90vh] overflow-hidden" data-testid="reorder-dialog">
+          <DialogHeader>
+            <DialogTitle className="font-display">Atur Urutan Produk (POS)</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label>Kategori</Label>
+              <Select value={reorderCat} onValueChange={(v) => buildReorder(v)}>
+                <SelectTrigger data-testid="reorder-category-select"><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
+                <SelectContent>
+                  {catsWithProducts.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  {hasUncategorized && <SelectItem value="none">Tanpa Kategori</SelectItem>}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-muted-foreground">Urutan ini menentukan tampilan produk di layar Kasir (POS). Gunakan panah untuk memindah naik/turun.</p>
+            <div className="max-h-[50vh] space-y-1.5 overflow-y-auto pr-1" data-testid="reorder-list">
+              {reorderList.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Tidak ada produk di kategori ini.</p>}
+              {reorderList.map((p, idx) => (
+                <div key={p.id} className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2" data-testid={`reorder-item-${p.id}`}>
+                  <span className="w-6 shrink-0 text-xs font-semibold text-muted-foreground">{idx + 1}.</span>
+                  <span className="flex-1 truncate text-sm">{p.name}</span>
+                  <div className="flex shrink-0 gap-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" disabled={idx === 0} onClick={() => moveItem(idx, -1)} data-testid={`reorder-up-${p.id}`}><ChevronUp className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" disabled={idx === reorderList.length - 1} onClick={() => moveItem(idx, 1)} data-testid={`reorder-down-${p.id}`}><ChevronDown className="h-4 w-4" /></Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReorderOpen(false)}>Batal</Button>
+            <Button onClick={saveReorder} disabled={reorderList.length === 0} data-testid="reorder-save-button">Simpan Urutan</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

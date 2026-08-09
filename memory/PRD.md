@@ -154,6 +154,13 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - CHANGED: Wrapper tabel di `Products.jsx`, `Purchases.jsx`, `Expenses.jsx`, `Users.jsx` → `overflow-x-auto` + `<table>` diberi `min-w-[640px]`. `Inventory.jsx` & `Reports.jsx` → `overflow-auto` + `<table min-w-[560px]>`.
 - Verified oleh testing_agent (iteration_7.json, frontend 100%): keenam halaman bisa scroll horizontal di 390x844 (scrollWidth>clientWidth, scrollLeft berubah); regresi desktop 1440 bersih.
 
+## Update (2026-06) — Hapus foto di form produk + Atur urutan produk POS
+- CHANGED (`Products.jsx`): field "Gambar Produk" + fungsi `handleImage` dihapus dari form Tambah/Edit Produk (foto tidak lagi ditampilkan/diunggah di form). Field image tetap ada di data model (tidak dihapus dari DB) tapi tidak diedit dari form.
+- ADDED (Fitur urutan POS): 
+  - Backend: field produk `sort_order`; `GET /products` diurutkan by sort_order asc lalu nama; produk baru dapat `sort_order = count`; endpoint baru `POST /api/products/reorder` body `{ids:[...]}` set sort_order per index (Owner/Manager/Gudang).
+  - Frontend: tombol "Atur Urutan" di halaman Produk membuka dialog `reorder-dialog` — pilih kategori, daftar produk bernomor dgn panah naik/turun (`reorder-up/down-<id>`), `reorder-save-button` → POST reorder. POS mengurutkan produk per kategori mengikuti sort_order (grouping mempertahankan urutan API).
+- Verified: curl reorder APRON (urutan terbalik, sort_order 0..3 & GET mencerminkannya); screenshot form tanpa foto & dialog urutan + simpan berhasil.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
