@@ -198,6 +198,11 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - ADDED: Ekspor Excel kini memuat blok "Ringkasan Per Rekening / Metode".
 - Verified: curl (by_method+count); screenshot (Tunai 3x/Rp186rb, BCA TOKO 2x/Rp100rb, BRI TOKO 1x/Rp50rb, Total Transfer Bank 3x/Rp150rb). Data uji di-refund agar bersih.
 
+## Update (2026-06) — Menu Ekspor Data (CSV)
+- ADDED (backend `server.py`): Endpoint `GET /api/export/{dataset}?start=&end=` (Owner-only) mengembalikan file CSV (UTF-8 + BOM utk Excel, `Content-Disposition` attachment, nama file berisi tanggal). Dataset: sales, orders, purchases, expenses, stock_movements, activities (bisa difilter tanggal via `created_at`), + products, categories, customers, suppliers, users (master, tanpa filter). Nilai nested (list/dict) → JSON string; nilai base64 gambar diganti "[gambar tersimpan]" agar CSV tetap valid di Excel. Kolom Pengguna termasuk `password_hash` (sesuai permintaan Owner). Dataset tak dikenal → 404.
+- ADDED (frontend): Halaman `ExportData.jsx` (route `/ekspor`, menu sidebar "Ekspor Data" Owner-only) — filter tanggal dari–sampai (berlaku utk transaksi), kartu per dataset dgn tombol "CSV", dan tombol "Unduh Semua CSV" (unduh semua berurutan). testid: `export-card-<key>`, `export-btn-<key>`, `export-all-button`, `export-start`, `export-end`.
+- Verified: curl (products/sales/users CSV, filter tanggal → header saja utk rentang kosong, 404 utk dataset salah, gambar ter-strip); screenshot + unduhan nyata (`products_2026-08-09.csv`).
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.

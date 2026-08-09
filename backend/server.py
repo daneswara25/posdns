@@ -3,6 +3,7 @@ from pathlib import Path
 import os
 import json
 import csv
+import io
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -595,6 +596,74 @@ async def clear_transactions(user: dict = Depends(require_roles("Owner"))):
         result[coll] = r.deleted_count
     await log_activity(tid, user, "Reset Data Transaksi", "Semua transaksi percobaan dihapus")
     return {"ok": True, "deleted": result}
+
+
+EXPORT_COLLECTIONS = {
+    "sales": "sales",
+    "orders": "orders",
+    "purchases": "purchases",
+    "expenses": "expenses",
+    "stock_movements": "stock_movements",
+    "products": "products",
+    "categories": "categories",
+    "customers": "customers",
+    "suppliers": "suppliers",
+    "users": "users",
+    "activities": "activities",
+}
+# Datasets that support created_at date-range filtering
+EXPORT_DATE_FILTERABLE = {"sales", "orders", "purchases", "expenses", "stock_movements", "activities"}
+
+
+def _csv_cell(v):
+    if v is None:
+        return ""
+    if isinstance(v, (dict, list)):
+        return json.dumps(v, ensure_ascii=False)
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    s = str(v)
+    if s.startswith("data:image"):
+        return "[gambar tersimpan]"
+    return s
+
+
+def _docs_to_csv(docs):
+    # Build header from union of keys, preserving first-seen order
+    headers = []
+    seen = set()
+    for d in docs:
+        for k in d.keys():
+            if k not in seen:
+                seen.add(k)
+                headers.append(k)
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(headers)
+    for d in docs:
+        writer.writerow([_csv_cell(d.get(h)) for h in headers])
+    return output.getvalue()
+
+
+@api_router.get("/export/{dataset}")
+async def export_dataset(dataset: str, user: dict = Depends(require_roles("Owner")),
+                         start: Optional[str] = None, end: Optional[str] = None):
+    coll = EXPORT_COLLECTIONS.get(dataset)
+    if not coll:
+        raise HTTPException(status_code=404, detail="Jenis data tidak dikenal")
+    tid = user["tenant_id"]
+    docs = await db[coll].find({"tenant_id": tid}, {"_id": 0}).sort("created_at", -1).to_list(50000)
+    if dataset in EXPORT_DATE_FILTERABLE:
+        if start:
+            docs = [d for d in docs if str(d.get("created_at", ""))[:10] >= start]
+        if end:
+            docs = [d for d in docs if str(d.get("created_at", ""))[:10] <= end]
+    csv_text = _docs_to_csv(docs)
+    # BOM so Excel opens UTF-8 correctly
+    body = "\ufeff" + csv_text
+    filename = f"{dataset}_{now_iso()[:10]}.csv"
+    return Response(content=body, media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
 def _parse_catalog_num(v):
