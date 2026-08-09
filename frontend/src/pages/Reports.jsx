@@ -225,8 +225,8 @@ export default function Reports() {
 
         <div className="rounded-lg border border-border bg-card p-5 lg:col-span-2">
           <h3 className="mb-3 font-display font-semibold">Riwayat Transaksi</h3>
-          <div className="max-h-[50vh] overflow-y-auto">
-            <table className="w-full text-sm">
+          <div className="max-h-[50vh] overflow-auto">
+            <table className="w-full min-w-[560px] text-sm">
               <thead className="sticky top-0 bg-card text-xs uppercase text-muted-foreground">
                 <tr><th className="py-2 text-left">Invoice</th><th className="py-2 text-left">Metode</th><th className="py-2 text-right">Total</th><th className="py-2 text-right">Waktu</th><th></th></tr>
               </thead>

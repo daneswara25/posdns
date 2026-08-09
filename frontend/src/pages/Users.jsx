@@ -82,8 +82,8 @@ export default function Users() {
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama, username, atau peran..." className="pl-10" data-testid="user-search" />
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-secondary text-xs uppercase text-muted-foreground">
             <tr><th className="px-4 py-3 text-left">Nama</th><th className="px-4 py-3 text-left">Username</th><th className="px-4 py-3 text-left">Peran</th><th className="px-4 py-3 text-left">Status</th><th></th></tr>
           </thead>

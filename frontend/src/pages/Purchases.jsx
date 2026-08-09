@@ -70,8 +70,8 @@ export default function Purchases() {
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari no. PO, supplier, atau status..." className="pl-10" data-testid="po-search" />
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-secondary text-xs uppercase text-muted-foreground">
             <tr><th className="px-4 py-3 text-left">No. PO</th><th className="px-4 py-3 text-left">Supplier</th><th className="px-4 py-3 text-right">Total</th><th className="px-4 py-3 text-left">Status</th><th></th></tr>
           </thead>

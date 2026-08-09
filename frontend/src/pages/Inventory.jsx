@@ -82,8 +82,8 @@ export default function Inventory() {
             <ClipboardList className="h-4 w-4" />
             <h3 className="font-display font-semibold">Riwayat Pergerakan Stok</h3>
           </div>
-          <div className="max-h-[60vh] overflow-y-auto">
-            <table className="w-full text-sm">
+          <div className="max-h-[60vh] overflow-auto">
+            <table className="w-full min-w-[560px] text-sm">
               <thead className="sticky top-0 bg-card text-xs uppercase text-muted-foreground">
                 <tr><th className="py-2 text-left">Produk</th><th className="py-2 text-left">Tipe</th><th className="py-2 text-right">Perubahan</th><th className="py-2 text-right">Waktu</th></tr>
               </thead>
