@@ -161,6 +161,12 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
   - Frontend: tombol "Atur Urutan" di halaman Produk membuka dialog `reorder-dialog` — pilih kategori, daftar produk bernomor dgn panah naik/turun (`reorder-up/down-<id>`), `reorder-save-button` → POST reorder. POS mengurutkan produk per kategori mengikuti sort_order (grouping mempertahankan urutan API).
 - Verified: curl reorder APRON (urutan terbalik, sort_order 0..3 & GET mencerminkannya); screenshot form tanpa foto & dialog urutan + simpan berhasil.
 
+## Update (2026-06) — Redesign posdns.html agar sama dengan Login aplikasi
+- CHANGED (`frontend/public/posdns.html`, 100% standalone): Panel kiri dari gradient → foto latar kasir (Unsplash sama seperti `Login.jsx`) + overlay biru gelap `rgba(23,37,84,.72)` (setara bg-blue-950/70). Logo dipindah ke pojok kiri-bawah dalam kotak translucent (rounded, backdrop-blur, ring), diikuti judul `Daneswara POS` + tagline — persis aplikasi.
+- CHANGED: Panel kanan ditambah eyebrow "MASUK" di atas "Selamat datang kembali"; brand row disembunyikan di desktop (`@media min-width:861px`), tetap tampil di mobile (hero disembunyikan di ≤860px). Label Username/Password & tombol biru "Masuk" tetap.
+- UNCHANGED: Logika JS login, `SYSTEM_URL`, alur token, & konfigurasi CORS tidak diubah. Logo base64 dipertahankan (edit dilakukan surgical via string replace).
+- Verified: screenshot `localhost:3000/posdns.html` menampilkan layout split-screen identik dgn aplikasi React.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
