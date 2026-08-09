@@ -229,6 +229,11 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - ADDED (`Reports.jsx`): Tombol **"Cetak Ulang Struk"** (`reprint-receipt-button`) di footer dialog Detail Transaksi. Memuat `settings` dari `GET /settings` dan memanggil `printReceiptSmart(detailSale, settings)` (logika sama persis dgn cetak struk di POS): mode Bluetooth thermal (ESC/POS) bila diset di Pengaturan, selain itu cetak desktop. Toast sukses/gagal. Tidak ada perubahan backend.
 - Verified: screenshot (tombol tampil di dialog detail). Catatan: cetak fisik butuh printer terhubung / mode cetak sesuai Pengaturan — fungsi identik dengan yang sudah teruji di checkout POS.
 
+## Update (2026-06) — Revert posdns.html ke tema biru-putih + fix logo overflow
+- REVERTED (`frontend/public/posdns.html`): dikembalikan dari commit `1cfeb80` (tema **biru-putih modern**, split-screen foto + overlay biru `rgba(23,37,84,.72)`, tombol biru `rgb(37,99,235)`, "Daneswara POS" + "Selamat datang kembali"). Tema vintage dibuang sesuai permintaan user.
+- FIXED (bug logo keluar frame): Logo PNG berorientasi portrait (746x1279) sebelumnya dipaksa `width/height:100%` → render ~64x110px & menimpa judul. Diperbaiki dgn `.hero .logo .mark img { max-width:64px; max-height:64px; width:auto; height:auto; object-fit:contain }` dan `.box .brand .mark img { max-width:48px; max-height:48px; ... }`. Aspek rasio terjaga, logo pas di dalam kotak.
+- Verified oleh testing_agent (iteration_9.json, frontend 100%): desktop img 37x64 (tak menimpa h1), mobile img 28x48 (tak menimpa eyebrow), tema biru-putih & form login (#username/#password/#submitBtn) utuh. CATATAN: user berencana menyiapkan file logo dengan rasio sesuai; jika nanti diberikan, cukup ganti base64/URL logo.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
