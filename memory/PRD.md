@@ -192,6 +192,12 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
   - Dialog varian: qty jadi `<input>` `data-testid="variant-qty-<pid>"` + helper `setTempQty(p,val)` (clamp min 1). Footer "Selesai — Tambah N item" mengikuti.
 - Verified: screenshot — ketik "25" di qty varian → footer "Tambah 25 item". Pola input keranjang identik.
 
+## Update (2026-06) — Laporan: Ringkasan Per Rekening
+- ADDED (`server.py` `/reports/sales`): `by_method` kini menyertakan `count` per metode (`{method,total,count}`) — tetap kompatibel dgn pie chart.
+- ADDED (`Reports.jsx`): Kartu **"Ringkasan Per Rekening / Metode"** (`account-summary-section`) menampilkan tiap metode (Tunai, BCA TOKO, BRI TOKO, BCA ADMIN (ELIS), QRIS, E-Wallet) beserta jumlah transaksi & total, diurutkan (`METHOD_ORDER`), rekening bank ditandai ikon. Baris ringkas **"Total Transfer Bank"** (`account-bank-total`, `account-bank-count`) menjumlahkan 3 rekening bank untuk rekonsiliasi kas.
+- ADDED: Ekspor Excel kini memuat blok "Ringkasan Per Rekening / Metode".
+- Verified: curl (by_method+count); screenshot (Tunai 3x/Rp186rb, BCA TOKO 2x/Rp100rb, BRI TOKO 1x/Rp50rb, Total Transfer Bank 3x/Rp150rb). Data uji di-refund agar bersih.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.

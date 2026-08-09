@@ -553,10 +553,13 @@ async def report_sales(user: dict = Depends(require_roles("Owner", "Manager")),
     profit = sum(s.get("profit", 0) for s in sales)
     by_method = {}
     for s in sales:
-        by_method[s["payment_method"]] = by_method.get(s["payment_method"], 0) + s["total"]
+        m = s["payment_method"]
+        e = by_method.setdefault(m, {"total": 0, "count": 0})
+        e["total"] += s["total"]
+        e["count"] += 1
     return {
         "count": len(sales), "total": total, "profit": profit,
-        "by_method": [{"method": k, "total": v} for k, v in by_method.items()],
+        "by_method": [{"method": k, "total": v["total"], "count": v["count"]} for k, v in by_method.items()],
         "sales": sales,
     }
 

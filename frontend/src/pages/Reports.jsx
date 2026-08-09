@@ -6,12 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { Receipt, Undo2, FileSpreadsheet, FileText, Scale } from "lucide-react";
+import { Receipt, Undo2, FileSpreadsheet, FileText, Scale, Landmark } from "lucide-react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-const PIE = ["#2563EB", "#7C3AED", "#F97316", "#10B981"];
+const PIE = ["#2563EB", "#7C3AED", "#F97316", "#10B981", "#0EA5E9", "#EF4444"];
+const METHOD_ORDER = ["Tunai", "BCA TOKO", "BRI TOKO", "BCA ADMIN (ELIS)", "QRIS", "E-Wallet"];
+const BANK_METHODS = ["BCA TOKO", "BRI TOKO", "BCA ADMIN (ELIS)"];
+const sortMethods = (arr) => [...arr].sort((a, b) => {
+  const ia = METHOD_ORDER.indexOf(a.method); const ib = METHOD_ORDER.indexOf(b.method);
+  return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+});
 
 export default function Reports() {
   const { user } = useAuth();
@@ -67,7 +73,8 @@ export default function Reports() {
       new Date(s.created_at).toLocaleString("id-ID"),
     ]);
     const summary = [[], ["Ringkasan"], ["Periode", periodLabel()], ["Total Omzet", rep.total], ["Laba Kotor", rep.profit], ["Jumlah Transaksi", rep.count]];
-    const ws = XLSX.utils.aoa_to_sheet([...header, ...rows, ...summary]);
+    const perAccount = [[], ["Ringkasan Per Rekening / Metode"], ["Rekening / Metode", "Transaksi", "Total"], ...sortMethods(rep.by_method).map((m) => [m.method, m.count, m.total])];
+    const ws = XLSX.utils.aoa_to_sheet([...header, ...rows, ...summary, ...perAccount]);
     ws["!cols"] = [{ wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 22 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Laporan Penjualan");
@@ -150,6 +157,50 @@ export default function Reports() {
         <div className="rounded-lg border border-border bg-card p-5"><p className="text-xs uppercase tracking-widest text-muted-foreground">Total Omzet</p><p className="mt-2 font-display text-2xl font-bold">{rupiah(rep.total)}</p></div>
         <div className="rounded-lg border border-border bg-card p-5"><p className="text-xs uppercase tracking-widest text-muted-foreground">Laba Kotor</p><p className="mt-2 font-display text-2xl font-bold text-emerald-600">{rupiah(rep.profit)}</p></div>
         <div className="rounded-lg border border-border bg-card p-5"><p className="text-xs uppercase tracking-widest text-muted-foreground">Jumlah Transaksi</p><p className="mt-2 font-display text-2xl font-bold">{rep.count}</p></div>
+      </div>
+
+      <div className="rounded-lg border border-border bg-card p-6" data-testid="account-summary-section">
+        <div className="mb-4 flex items-center gap-2">
+          <Landmark className="h-5 w-5 text-primary" />
+          <h3 className="font-display text-lg font-semibold">Ringkasan Per Rekening / Metode</h3>
+        </div>
+        {rep.by_method.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Belum ada transaksi pada periode ini.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[420px] text-sm">
+              <thead className="text-xs uppercase text-muted-foreground">
+                <tr className="border-b border-border">
+                  <th className="py-2 text-left font-medium">Rekening / Metode</th>
+                  <th className="py-2 text-right font-medium">Transaksi</th>
+                  <th className="py-2 text-right font-medium">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortMethods(rep.by_method).map((m) => {
+                  const isBankRow = BANK_METHODS.includes(m.method);
+                  return (
+                    <tr key={m.method} className="border-b border-border/60" data-testid={`account-row-${m.method}`}>
+                      <td className="py-2">
+                        <span className="inline-flex items-center gap-2">
+                          {isBankRow && <Landmark className="h-3.5 w-3.5 text-muted-foreground" />}
+                          <span className={isBankRow ? "font-semibold" : ""}>{m.method}</span>
+                        </span>
+                      </td>
+                      <td className="py-2 text-right text-muted-foreground">{m.count}x</td>
+                      <td className="py-2 text-right font-semibold">{rupiah(m.total)}</td>
+                    </tr>
+                  );
+                })}
+                <tr className="border-t-2 border-border bg-secondary/30">
+                  <td className="py-2 font-semibold">Total Transfer Bank</td>
+                  <td className="py-2 text-right text-muted-foreground" data-testid="account-bank-count">{rep.by_method.filter((m) => BANK_METHODS.includes(m.method)).reduce((a, m) => a + m.count, 0)}x</td>
+                  <td className="py-2 text-right font-bold text-primary" data-testid="account-bank-total">{rupiah(rep.by_method.filter((m) => BANK_METHODS.includes(m.method)).reduce((a, m) => a + m.total, 0))}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {pl && (
