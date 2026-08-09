@@ -149,6 +149,11 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - Verified: set sementara gambar kategori APRON → produk APRON tanpa gambar sendiri (Gold K/SERIES/WP) memakai gambar kategori, Drill SS tetap pakai foto sendiri; gambar uji dikembalikan ke kosong.
 - Catatan: user mengatur thumbnail per kategori di halaman Kategori; produksi perlu redeploy agar perubahan aktif.
 
+## Update (2026-06) — Fix tabel list tidak bisa geser horizontal di mobile
+- FIXED (bug): Di mobile portrait, tabel list memotong kolom kanan (mis. STATUS/aksi) & tidak bisa digeser. Penyebab: wrapper tabel memakai `overflow-hidden` yang mengklip overflow horizontal.
+- CHANGED: Wrapper tabel di `Products.jsx`, `Purchases.jsx`, `Expenses.jsx`, `Users.jsx` → `overflow-x-auto` + `<table>` diberi `min-w-[640px]`. `Inventory.jsx` & `Reports.jsx` → `overflow-auto` + `<table min-w-[560px]>`.
+- Verified oleh testing_agent (iteration_7.json, frontend 100%): keenam halaman bisa scroll horizontal di 390x844 (scrollWidth>clientWidth, scrollLeft berubah); regresi desktop 1440 bersih.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
