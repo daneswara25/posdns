@@ -894,19 +894,33 @@ async def report_profit_loss(user: dict = Depends(require_roles("Owner", "Manage
 
 
 # ---------- Settings ----------
+PRINTER_FIELDS = {"print_mode", "paper_width", "printers", "active_printer"}
+
+
 @api_router.get("/settings")
 async def get_settings(user: dict = Depends(get_current_user)):
-    s = await db.settings.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0})
-    return s or {}
+    s = await db.settings.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0}) or {}
+    us = await db.user_settings.find_one({"tenant_id": user["tenant_id"], "user_id": user["id"]}, {"_id": 0}) or {}
+    # Printer settings are per-user; overlay them on top of shared tenant settings.
+    for f in PRINTER_FIELDS:
+        if f in us:
+            s[f] = us[f]
+    return s
 
 
 @api_router.put("/settings")
 async def update_settings(data: SettingsInput, user: dict = Depends(get_current_user)):
     upd = {k: v for k, v in data.model_dump().items() if v is not None}
-    if user["role"] not in ("Owner", "Manager"):
-        allowed = {"print_mode", "paper_width", "printers", "active_printer", "logo"}
-        upd = {k: v for k, v in upd.items() if k in allowed}
-    await db.settings.update_one({"tenant_id": user["tenant_id"]}, {"$set": upd}, upsert=True)
+    printer_patch = {k: v for k, v in upd.items() if k in PRINTER_FIELDS}
+    biz_patch = {k: v for k, v in upd.items() if k not in PRINTER_FIELDS}
+    if printer_patch:
+        await db.user_settings.update_one(
+            {"tenant_id": user["tenant_id"], "user_id": user["id"]},
+            {"$set": {**printer_patch, "tenant_id": user["tenant_id"], "user_id": user["id"]}},
+            upsert=True,
+        )
+    if biz_patch and user["role"] in ("Owner", "Manager"):
+        await db.settings.update_one({"tenant_id": user["tenant_id"]}, {"$set": biz_patch}, upsert=True)
     return {"ok": True}
 
 

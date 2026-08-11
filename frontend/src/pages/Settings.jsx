@@ -210,14 +210,18 @@ export default function Settings() {
 
       {/* Printer settings */}
       <div className="rounded-lg border border-border bg-card p-6">
-        <div className="mb-4 flex items-center gap-2">
+        <div className="mb-2 flex items-center gap-2">
           <Printer className="h-5 w-5 text-primary" />
           <h3 className="font-display text-lg font-semibold">Pengaturan Printer</h3>
         </div>
+        <p className="mb-4 rounded-md bg-primary/5 px-3 py-2 text-xs text-muted-foreground" data-testid="printer-per-user-note">
+          Pengaturan printer bersifat <b>per akun</b>. Setiap pengguna punya daftar printer, mode cetak, dan printer aktif sendiri — pengaturan terakhir yang Anda simpan akan otomatis dipakai saat Anda login.
+        </p>
 
         <div className="space-y-4">
+          {(user?.role === "Owner" || user?.role === "Manager") && (
           <div className="space-y-2">
-            <Label>Logo Struk <span className="text-muted-foreground">(tampil di struk cetak & thermal)</span></Label>
+            <Label>Logo Struk <span className="text-muted-foreground">(tampil di struk cetak & thermal — berlaku untuk seluruh toko)</span></Label>
             <div className="flex items-center gap-3">
               <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-white">
                 <img src={form.logo || "/logo.png"} alt="Logo struk" className="h-full w-full object-contain" data-testid="receipt-logo-preview" />
@@ -229,6 +233,7 @@ export default function Settings() {
               </div>
             </div>
           </div>
+          )}
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">

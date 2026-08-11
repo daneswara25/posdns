@@ -248,6 +248,11 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - ITEM 4 (Kasir Riwayat Transaksi): halaman baru `RiwayatTransaksi.jsx` (route `/riwayat`, menu Owner/Manager/Kasir) — daftar semua transaksi via `GET /sales?limit=1000`, kotak **pencarian** (invoice/pelanggan/metode/kasir), klik baris/aksi "Nota" → NotaDialog (detail + Cetak/WA/Salin).
 - Verified oleh testing_agent (iteration_11.json): backend 7/7; item 2,3,4 & pelunasan item1 lulus penuh; jalur DEPOSIT di POS diverifikasi mandiri via screenshot (badge "DEPOSIT" + 3 aksi). Akun uji Kasir: `kasirtest/Kasir123`.
 
+## Update (2026-06) — Pengaturan printer PER USER
+- CHANGED (backend `server.py`): Field printer (`print_mode`, `paper_width`, `printers`, `active_printer`) kini disimpan per pengguna di koleksi `user_settings` (key tenant_id+user_id). `GET /settings` mengembalikan settings toko + overlay printer milik user login (fallback ke settings toko bila user belum punya). `PUT /settings` memisah: field printer → `user_settings` (semua role); field bisnis (business_name/address/phone/currency/tax_rate/receipt_footer/logo) → settings toko (hanya Owner/Manager). Setting terakhir tiap user otomatis dipakai saat login.
+- CHANGED (`Settings.jsx`): Tambah catatan "Pengaturan printer bersifat per akun" (`printer-per-user-note`). Logo struk kini hanya bisa diubah Owner/Manager (branding toko), disembunyikan dari Kasir.
+- Verified via curl + screenshot: admin (bluetooth/80/ADMIN-PR) vs kasirtest (desktop/58/KASIR-PR) terpisah & persisten; Kasir tidak bisa ubah nama toko (tetap "Daneswara Store"); halaman Kasir hanya menampilkan bagian Printer + printer miliknya. (Entri uji printer admin sudah dihapus agar Owner kembali ke konfigurasi aslinya.)
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
