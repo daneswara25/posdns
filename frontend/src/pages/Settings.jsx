@@ -189,7 +189,8 @@ export default function Settings() {
         <h1 className="font-display text-3xl font-bold tracking-tight">Pengaturan</h1>
       </div>
 
-      {/* Outlet info */}
+      {/* Outlet info — Owner/Manager only */}
+      {(user?.role === "Owner" || user?.role === "Manager") && (
       <div className="rounded-lg border border-border bg-card p-6">
         <div className="mb-4 flex items-center gap-2">
           <Store className="h-5 w-5 text-primary" />
@@ -205,6 +206,7 @@ export default function Settings() {
         </div>
         <Button onClick={save} className="mt-6 gap-2" data-testid="save-settings-button"><Save className="h-4 w-4" /> Simpan Perubahan</Button>
       </div>
+      )}
 
       {/* Printer settings */}
       <div className="rounded-lg border border-border bg-card p-6">

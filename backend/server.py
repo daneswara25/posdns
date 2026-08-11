@@ -901,8 +901,11 @@ async def get_settings(user: dict = Depends(get_current_user)):
 
 
 @api_router.put("/settings")
-async def update_settings(data: SettingsInput, user: dict = Depends(require_roles("Owner", "Manager"))):
+async def update_settings(data: SettingsInput, user: dict = Depends(get_current_user)):
     upd = {k: v for k, v in data.model_dump().items() if v is not None}
+    if user["role"] not in ("Owner", "Manager"):
+        allowed = {"print_mode", "paper_width", "printers", "active_printer", "logo"}
+        upd = {k: v for k, v in upd.items() if k in allowed}
     await db.settings.update_one({"tenant_id": user["tenant_id"]}, {"$set": upd}, upsert=True)
     return {"ok": True}
 
@@ -910,7 +913,19 @@ async def update_settings(data: SettingsInput, user: dict = Depends(require_role
 # ---------- Customers / Membership ----------
 @api_router.get("/customers")
 async def list_customers(user: dict = Depends(get_current_user)):
-    return await db.customers.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).sort("created_at", -1).to_list(2000)
+    tid = user["tenant_id"]
+    customers = await db.customers.find({"tenant_id": tid}, {"_id": 0}).sort("created_at", -1).to_list(20000)
+    pipeline = [
+        {"$match": {"tenant_id": tid, "customer_id": {"$ne": None}, "refunded": {"$ne": True}}},
+        {"$group": {"_id": "$customer_id", "total": {"$sum": "$total"}, "count": {"$sum": 1}}},
+    ]
+    rows = await db.sales.aggregate(pipeline).to_list(50000)
+    agg = {r["_id"]: r for r in rows}
+    for c in customers:
+        a = agg.get(c["id"])
+        c["total_spent"] = a["total"] if a else 0
+        c["visits"] = a["count"] if a else 0
+    return customers
 
 
 @api_router.post("/customers")
@@ -935,7 +950,7 @@ async def delete_customer(cid: str, user: dict = Depends(require_roles("Owner", 
 
 @api_router.get("/customers/{cid}/history")
 async def customer_history(cid: str, user: dict = Depends(get_current_user)):
-    return await db.sales.find({"tenant_id": user["tenant_id"], "customer_id": cid}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return await db.sales.find({"tenant_id": user["tenant_id"], "customer_id": cid, "refunded": {"$ne": True}}, {"_id": 0}).sort("created_at", -1).to_list(500)
 
 
 # ---------- Suppliers ----------
@@ -1103,7 +1118,7 @@ async def complete_order(oid: str, data: SettleOrderInput, user: dict = Depends(
         "cashier": user.get("name", ""), "cashier_id": user["id"], "created_at": now_iso(),
     }
     await db.sales.insert_one(sale)
-    await db.orders.update_one({"id": oid}, {"$set": {"status": "Selesai", "completed_at": now_iso(), "invoice": invoice}})
+    await db.orders.update_one({"id": oid}, {"$set": {"status": "Selesai", "completed_at": now_iso(), "invoice": invoice, "payment_method": data.payment_method, "settle_paid": data.paid_amount, "remaining": 0}})
     await log_activity(user["tenant_id"], user, "Pesanan Selesai", f"{order['order_number']} -> {invoice}")
     return clean(sale)
 

@@ -18,6 +18,7 @@ import Customers from "@/pages/Customers";
 import Suppliers from "@/pages/Suppliers";
 import Purchases from "@/pages/Purchases";
 import Orders from "@/pages/Orders";
+import RiwayatTransaksi from "@/pages/RiwayatTransaksi";
 import Expenses from "@/pages/Expenses";
 import OtherIncome from "@/pages/OtherIncome";
 import ExportData from "@/pages/ExportData";
@@ -52,6 +53,7 @@ function App() {
                 <Route path="inventory" element={<ProtectedRoute roles={["Owner", "Manager", "Gudang"]}><Inventory /></ProtectedRoute>} />
                 <Route path="pelanggan" element={<ProtectedRoute roles={["Owner", "Manager", "Kasir"]}><Customers /></ProtectedRoute>} />
                 <Route path="pesanan" element={<ProtectedRoute roles={["Owner", "Manager", "Kasir"]}><Orders /></ProtectedRoute>} />
+                <Route path="riwayat" element={<ProtectedRoute roles={["Owner", "Manager", "Kasir"]}><RiwayatTransaksi /></ProtectedRoute>} />
                 <Route path="supplier" element={<ProtectedRoute roles={["Owner", "Manager", "Gudang"]}><Suppliers /></ProtectedRoute>} />
                 <Route path="pembelian" element={<ProtectedRoute roles={["Owner", "Manager", "Gudang"]}><Purchases /></ProtectedRoute>} />
                 <Route path="pengeluaran" element={<ProtectedRoute roles={["Owner", "Manager"]}><Expenses /></ProtectedRoute>} />
@@ -59,7 +61,7 @@ function App() {
                 <Route path="laporan" element={<ProtectedRoute roles={["Owner", "Manager"]}><Reports /></ProtectedRoute>} />
                 <Route path="ekspor" element={<ProtectedRoute roles={["Owner"]}><ExportData /></ProtectedRoute>} />
                 <Route path="pengguna" element={<ProtectedRoute roles={["Owner", "Manager"]}><Users /></ProtectedRoute>} />
-                <Route path="pengaturan" element={<ProtectedRoute roles={["Owner", "Manager"]}><Settings /></ProtectedRoute>} />
+                <Route path="pengaturan" element={<ProtectedRoute roles={["Owner", "Manager", "Kasir"]}><Settings /></ProtectedRoute>} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

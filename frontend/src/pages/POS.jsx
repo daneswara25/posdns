@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import api, { rupiah, formatApiError } from "@/lib/api";
 import { printReceiptSmart } from "@/lib/printer";
+import { NotaDialog } from "@/components/NotaDialog";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,6 +82,7 @@ export default function POS() {
   const [held, setHeld] = useState([]);
   const [depositOpen, setDepositOpen] = useState(false);
   const [depositAmt, setDepositAmt] = useState("");
+  const [nota, setNota] = useState(null);
   const [priceModal, setPriceModal] = useState(null); // { product, source: 'direct'|'variant' }
   const [priceVal, setPriceVal] = useState("");
 
@@ -133,13 +135,14 @@ export default function POS() {
   const submitDeposit = async () => {
     if (cart.length === 0) return toast.error("Keranjang kosong");
     try {
-      await api.post("/orders", {
+      const { data } = await api.post("/orders", {
         customer_id: customerId || null, items: cart,
         discount: Number(discount) || 0, tax_rate: taxRate,
         deposit_amount: Number(depositAmt) || 0, deposit_method: method,
       });
       toast.success("Pesanan + deposit tersimpan");
       setDepositOpen(false); setDepositAmt(""); setCart([]); setDiscount(0); setCustomerId(""); setCartOpen(false);
+      setNota(data);
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
 
@@ -810,6 +813,7 @@ export default function POS() {
       </Dialog>
 
       {/* deposit dialog */}
+      <NotaDialog nota={nota} onClose={() => setNota(null)} settings={settings} />
       <Dialog open={depositOpen} onOpenChange={setDepositOpen}>
         <DialogContent data-testid="deposit-dialog">
           <DialogHeader><DialogTitle className="font-display">Pesanan Custom — Total {rupiah(total)}</DialogTitle></DialogHeader>

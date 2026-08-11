@@ -6,6 +6,80 @@ let btName = "";
 
 export const rp = (n) => "Rp" + Number(n || 0).toLocaleString("id-ID", { maximumFractionDigits: 0 });
 
+// Payment status label for a receipt/order: "DEPOSIT" (pending order) or "LUNAS VIA <method>".
+export function paymentStatus(r) {
+  const pendingOrder = r && r.deposit_amount != null && r.status && r.status !== "Selesai";
+  if (pendingOrder) return "DEPOSIT";
+  return "LUNAS VIA " + (r?.payment_method || "-");
+}
+
+export function normalizePhone(p) {
+  let d = (p || "").replace(/[^0-9]/g, "");
+  if (!d) return "";
+  if (d.startsWith("0")) d = "62" + d.slice(1);
+  else if (d.startsWith("8")) d = "62" + d;
+  return d;
+}
+
+// Plain-text receipt for WhatsApp / clipboard.
+export function buildReceiptText(r, settings = {}) {
+  const L = [];
+  L.push(`*${settings.business_name || "Daneswara POS"}*`);
+  if (settings.address) L.push(settings.address);
+  if (settings.phone) L.push(`Telp: ${settings.phone}`);
+  L.push("--------------------------------");
+  L.push(`No   : ${r.invoice || r.order_number || "-"}`);
+  L.push(`Tgl  : ${new Date(r.created_at).toLocaleString("id-ID")}`);
+  if (r.customer_name) L.push(`Nama : ${r.customer_name}`);
+  if (r.cashier) L.push(`Kasir: ${r.cashier}`);
+  L.push("--------------------------------");
+  (r.items || []).forEach((i) => {
+    L.push(`${i.qty} x ${i.name}`);
+    L.push(`     @${rp(i.price)}  =  ${rp(i.price * i.qty)}`);
+    if (i.note) L.push(`     * ${i.note}`);
+  });
+  L.push("--------------------------------");
+  L.push(`Subtotal : ${rp(r.subtotal)}`);
+  if (r.discount) L.push(`Diskon   : -${rp(r.discount)}`);
+  if (r.tax) L.push(`Pajak    : ${rp(r.tax)}`);
+  L.push(`*TOTAL   : ${rp(r.total)}*`);
+  const pendingOrder = r.deposit_amount != null && r.status && r.status !== "Selesai";
+  if (r.deposit_amount != null) {
+    L.push(`Deposit  : ${rp(r.deposit_amount)}`);
+    L.push(`${pendingOrder ? "Sisa" : "Pelunasan"} : ${rp(pendingOrder ? r.remaining : (r.settle_paid ?? r.remaining ?? 0))}`);
+  } else {
+    L.push(`Bayar (${r.payment_method}) : ${rp(r.paid_amount)}`);
+    if (r.change) L.push(`Kembali  : ${rp(r.change)}`);
+  }
+  L.push(`*STATUS  : ${paymentStatus(r)}*`);
+  L.push("--------------------------------");
+  L.push(settings.receipt_footer || "Terima kasih telah berbelanja!");
+  return L.join("\n");
+}
+
+export function sendReceiptWhatsApp(r, settings, phone) {
+  const text = buildReceiptText(r, settings);
+  const d = normalizePhone(phone);
+  const url = d ? `https://wa.me/${d}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
+  window.open(url, "_blank");
+  return !!d;
+}
+
+export async function copyReceiptText(r, settings) {
+  const text = buildReceiptText(r, settings);
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+  }
+  return true;
+}
+
 // Reusable hidden iframe for desktop printing (avoids re-creating the DOM node each print).
 let _printFrame = null;
 function getPrintFrame() {
@@ -171,6 +245,11 @@ async function buildEscPos(r, settings) {
     text(row(r.payment_method || "Bayar", rp(r.paid_amount)));
     if (r.change) text(row("Kembalian", rp(r.change)));
   }
+  push([ESC, 0x61, 0x01]); // center
+  push([ESC, 0x21, 0x08]); // bold
+  text("* " + paymentStatus(r) + " *\n");
+  push([ESC, 0x21, 0x00]);
+  push([ESC, 0x61, 0x00]); // left
   text(divider);
   push([ESC, 0x61, 0x01]); // center
   text((settings.receipt_footer || "Terima kasih telah berbelanja!") + "\n");
@@ -222,6 +301,7 @@ export function printDesktop(r, settings) {
   ${r.tax ? line(`Pajak (${r.tax_rate}%)`, rp(r.tax)) : ""}
   <div class="row bold"><span>TOTAL</span><span>${rp(r.total)}</span></div>
   ${payRows}
+  <div class="center bold" style="margin-top:4px;border:1px solid #000;padding:2px;">${paymentStatus(r)}</div>
   <div class="divider"></div>
   ${r.note ? `<p class="sub">Catatan: ${r.note}</p>` : ""}
   <p class="center">${settings.receipt_footer || "Terima kasih telah berbelanja!"}</p>

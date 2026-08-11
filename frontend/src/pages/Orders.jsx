@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import api, { rupiah, formatApiError } from "@/lib/api";
-import { printReceiptSmart } from "@/lib/printer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NumberInput } from "@/components/NumberInput";
+import { NotaDialog } from "@/components/NotaDialog";
 import { toast } from "sonner";
 import { CheckCircle2, Clock, Trash2, Printer, Search } from "lucide-react";
 
@@ -21,6 +21,7 @@ export default function Orders() {
   const [method, setMethod] = useState("Tunai");
   const [paid, setPaid] = useState("");
   const [q, setQ] = useState("");
+  const [nota, setNota] = useState(null);
 
   const load = () => { api.get("/orders").then((r) => setList(r.data)); };
   useEffect(() => {
@@ -28,22 +29,16 @@ export default function Orders() {
     api.get("/settings").then((r) => setSettings(r.data || {}));
   }, []);
 
-  const printNota = async (o) => {
-    try {
-      const mode = await printReceiptSmart(o, settings);
-      if (mode === "bluetooth") toast.success("Nota dikirim ke printer Bluetooth");
-    } catch (e) {
-      toast.error(e.message || "Gagal mencetak nota");
-    }
-  };
+  const printNota = (o) => setNota(o);
 
   const complete = async () => {
     const remaining = settle.remaining;
     if (Number(paid) < remaining) return toast.error("Nominal pelunasan kurang");
     try {
-      await api.post(`/orders/${settle.id}/complete`, { payment_method: method, paid_amount: Number(paid) });
+      const { data } = await api.post(`/orders/${settle.id}/complete`, { payment_method: method, paid_amount: Number(paid) });
       toast.success("Pesanan selesai & struk dibuat");
       setSettle(null); setPaid(""); load();
+      setNota(data);
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
   const del = async (id) => { if (!window.confirm("Hapus pesanan?")) return; await api.delete(`/orders/${id}`); load(); };
@@ -85,7 +80,7 @@ export default function Orders() {
             </div>
             <div className="mt-3 flex gap-2">
               {o.status !== "Selesai" && <Button className="flex-1" onClick={() => { setSettle(o); setPaid(o.remaining); }} data-testid={`complete-order-${o.id}`}>Selesaikan & Lunasi</Button>}
-              <Button variant="outline" size="sm" className="gap-1" onClick={() => printNota(o)} data-testid={`reprint-order-${o.id}`}><Printer className="h-4 w-4" /> Cetak Nota</Button>
+              <Button variant="outline" size="sm" className="gap-1" onClick={() => printNota(o)} data-testid={`reprint-order-${o.id}`}><Printer className="h-4 w-4" /> Nota</Button>
               <Button variant="ghost" size="icon" onClick={() => del(o.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
             </div>
           </div>
@@ -120,6 +115,8 @@ export default function Orders() {
           <DialogFooter><Button onClick={complete} className="w-full" data-testid="settle-confirm-button">Konfirmasi Selesai</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <NotaDialog nota={nota} onClose={() => setNota(null)} settings={settings} />
     </div>
   );
 }
