@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api, { rupiah } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
@@ -19,6 +20,8 @@ const Stat = ({ icon: Icon, label, value, sub, tint }) => (
 );
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const isKasir = user?.role === "Kasir";
   const [d, setD] = useState(null);
 
   useEffect(() => {
@@ -34,14 +37,16 @@ export default function Dashboard() {
         <h1 className="font-display text-3xl font-bold tracking-tight">Dashboard</h1>
       </div>
 
+      {!isKasir && (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat icon={TrendingUp} label="Omzet Hari Ini" value={rupiah(d.today_revenue)} sub={`${d.today_transactions} transaksi`} tint="bg-accent text-accent-foreground" />
         <Stat icon={PiggyBank} label="Laba Hari Ini" value={rupiah(d.today_profit)} tint="bg-emerald-500/10 text-emerald-600" />
         <Stat icon={Receipt} label="Total Omzet" value={rupiah(d.total_revenue)} sub={`${d.total_transactions} transaksi`} tint="bg-violet-500/10 text-violet-600" />
         <Stat icon={Package} label="Total Produk" value={d.product_count} sub={`${d.low_stock_count} stok menipis`} tint="bg-orange-500/10 text-orange-600" />
       </div>
+      )}
 
-      {(d.minus_stock || []).length > 0 && (
+      {!isKasir && (d.minus_stock || []).length > 0 && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-5" data-testid="minus-stock-card">
           <div className="flex items-center gap-2">
             <PackageMinus className="h-4 w-4 text-destructive" />
@@ -60,6 +65,7 @@ export default function Dashboard() {
         </div>
       )}
 
+      {!isKasir && (
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="rounded-lg border border-border bg-card p-5 lg:col-span-2">
           <h3 className="font-display text-lg font-semibold">Penjualan 7 Hari Terakhir</h3>
@@ -97,8 +103,10 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className={`grid grid-cols-1 gap-4 ${isKasir ? "" : "lg:grid-cols-2"}`}>
+        {!isKasir && (
         <div className="rounded-lg border border-border bg-card p-5">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-orange-500" />
@@ -119,6 +127,7 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+        )}
 
         <div className="rounded-lg border border-border bg-card p-5">
           <div className="flex items-center gap-2">
