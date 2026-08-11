@@ -253,6 +253,11 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - CHANGED (`Settings.jsx`): Tambah catatan "Pengaturan printer bersifat per akun" (`printer-per-user-note`). Logo struk kini hanya bisa diubah Owner/Manager (branding toko), disembunyikan dari Kasir.
 - Verified via curl + screenshot: admin (bluetooth/80/ADMIN-PR) vs kasirtest (desktop/58/KASIR-PR) terpisah & persisten; Kasir tidak bisa ubah nama toko (tetap "Daneswara Store"); halaman Kasir hanya menampilkan bagian Printer + printer miliknya. (Entri uji printer admin sudah dihapus agar Owner kembali ke konfigurasi aslinya.)
 
+## Update (2026-06) — Kirim nota sebagai GAMBAR (kartu)
+- ADDED (`NotaDialog.jsx` + `html2canvas`): Tombol **"Bagikan Nota sebagai Gambar"** merender nota menjadi kartu PNG bergaya modern (header gradient biru + logo, badge status DEPOSIT/LUNAS VIA, rincian item, total, footer) via elemen offscreen ber-inline-style (aman untuk html2canvas). Aksi: `navigator.share({files})` di HP (langsung terlampir ke WhatsApp/aplikasi lain); fallback **unduh PNG** di desktop. Tombol teks WA lama tetap ada. Berlaku di semua tempat NotaDialog dipakai (POS, Pesanan, Riwayat, Laporan).
+- Dependency baru: `html2canvas@1.4.1` (frontend).
+- Verified via screenshot + unduhan nyata: `nota-INV-260811-0010.png` terbuat (status LUNAS VIA BRI TOKO).
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
