@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 const NAV = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, roles: ["Owner", "Manager", "Kasir", "Gudang"], end: true },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, roles: ["Owner", "Manager", "Gudang"], end: true },
   { to: "/produk", label: "Produk", icon: Package, roles: ["Owner", "Manager", "Gudang"] },
   { to: "/kategori", label: "Kategori", icon: Tags, roles: ["Owner", "Manager", "Gudang"] },
   { to: "/inventory", label: "Inventory", icon: Warehouse, roles: ["Owner", "Manager", "Gudang"] },

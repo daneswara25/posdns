@@ -8,28 +8,17 @@ import { printReceiptSmart, paymentStatus, sendReceiptWhatsApp, copyReceiptText 
 import { toast } from "sonner";
 import { MessageCircle, Copy, Printer, Image as ImageIcon } from "lucide-react";
 
-// Reusable nota/receipt dialog with Cetak / Kirim WA (teks) / Salin / Bagikan Gambar.
-export function NotaDialog({ nota, onClose, settings = {} }) {
-  const [phone, setPhone] = useState("");
+// Reusable "Bagikan Nota sebagai Gambar" button + offscreen PNG card.
+// Renders the shareable card offscreen and shares (mobile) or downloads (desktop).
+export function ShareNotaImageButton({ nota, settings = {}, className = "w-full gap-2" }) {
   const [busy, setBusy] = useState(false);
   const cardRef = useRef(null);
-  useEffect(() => { setPhone(nota?.customer_phone || ""); }, [nota]);
+  if (!nota) return null;
 
-  const open = !!nota;
-  const status = nota ? paymentStatus(nota) : "";
+  const status = paymentStatus(nota);
   const isDeposit = status === "DEPOSIT";
-
-  const doPrint = async () => {
-    try {
-      const mode = await printReceiptSmart(nota, settings);
-      if (mode === "bluetooth") toast.success("Nota dikirim ke printer Bluetooth");
-    } catch (e) { toast.error(e.message || "Gagal mencetak nota"); }
-  };
-  const doWa = () => {
-    const ok = sendReceiptWhatsApp(nota, settings, phone);
-    if (!ok) toast.info("Nomor tujuan kosong — pilih kontak di WhatsApp");
-  };
-  const doCopy = async () => { await copyReceiptText(nota, settings); toast.success("Nota disalin — tinggal tempel di WhatsApp pelanggan"); };
+  const badge = isDeposit ? { bg: "#fff7ed", fg: "#c2410c", br: "#fdba74" } : { bg: "#ecfdf5", fg: "#15803d", br: "#86efac" };
+  const items = nota?.items || [];
 
   const shareImage = async () => {
     if (!cardRef.current) return;
@@ -54,7 +43,102 @@ export function NotaDialog({ nota, onClose, settings = {} }) {
     } finally { setBusy(false); }
   };
 
-  const badge = isDeposit ? { bg: "#fff7ed", fg: "#c2410c", br: "#fdba74" } : { bg: "#ecfdf5", fg: "#15803d", br: "#86efac" };
+  return (
+    <>
+      <Button className={className} onClick={shareImage} disabled={busy} data-testid="nota-share-image-button">
+        <ImageIcon className="h-4 w-4" /> {busy ? "Membuat gambar..." : "Bagikan Nota sebagai Gambar"}
+      </Button>
+
+      {/* Offscreen card used to render the shareable image (inline hex styles for html2canvas) */}
+      <div style={{ position: "fixed", left: "-10000px", top: 0 }} aria-hidden="true">
+        <div ref={cardRef} style={{ width: "460px", padding: "22px", background: "#eef2f7", fontFamily: "Arial, Helvetica, sans-serif" }}>
+          <div style={{ background: "#ffffff", borderRadius: "18px", overflow: "hidden", boxShadow: "0 8px 24px rgba(15,23,42,0.12)" }}>
+            <div style={{ background: "linear-gradient(135deg,#1e3a8a,#2563eb)", color: "#ffffff", padding: "20px 22px", display: "flex", alignItems: "center", gap: "14px" }}>
+              <div style={{ width: "52px", height: "52px", borderRadius: "12px", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                <img src={settings.logo || "/logo.png"} alt="" crossOrigin="anonymous" style={{ maxWidth: "40px", maxHeight: "40px", objectFit: "contain" }} />
+              </div>
+              <div style={{ lineHeight: 1.25 }}>
+                <div style={{ fontSize: "19px", fontWeight: 800 }}>{settings.business_name || "Daneswara POS"}</div>
+                {settings.address ? <div style={{ fontSize: "11px", opacity: 0.9 }}>{settings.address}</div> : null}
+                {settings.phone ? <div style={{ fontSize: "11px", opacity: 0.9 }}>Telp: {settings.phone}</div> : null}
+              </div>
+            </div>
+
+            <div style={{ padding: "18px 22px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                <div>
+                  <div style={{ fontSize: "16px", fontWeight: 800, color: "#0f172a" }}>{nota.invoice || nota.order_number}</div>
+                  <div style={{ fontSize: "11px", color: "#64748b" }}>{new Date(nota.created_at).toLocaleString("id-ID")}</div>
+                </div>
+                <div style={{ background: badge.bg, color: badge.fg, border: `1px solid ${badge.br}`, borderRadius: "999px", padding: "5px 12px", fontSize: "12px", fontWeight: 800 }}>{status}</div>
+              </div>
+
+              <div style={{ fontSize: "12px", color: "#334155", marginBottom: "10px" }}>
+                <div>Pelanggan: <b>{nota.customer_name || "Umum"}</b></div>
+                {nota.cashier ? <div>Kasir: {nota.cashier}</div> : null}
+              </div>
+
+              <div style={{ borderTop: "1px dashed #cbd5e1", paddingTop: "10px" }}>
+                {items.map((i, idx) => (
+                  <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "6px" }}>
+                    <div style={{ maxWidth: "260px" }}>
+                      <div style={{ color: "#0f172a" }}>{i.name}</div>
+                      <div style={{ fontSize: "11px", color: "#94a3b8" }}>{i.qty} x {rupiah(i.price)}{i.note ? ` • ${i.note}` : ""}</div>
+                    </div>
+                    <div style={{ fontWeight: 700, color: "#0f172a" }}>{rupiah(i.price * i.qty)}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ borderTop: "1px dashed #cbd5e1", marginTop: "8px", paddingTop: "10px", fontSize: "13px", color: "#334155" }}>
+                <Row l="Subtotal" r={rupiah(nota.subtotal)} />
+                {nota.discount ? <Row l="Diskon" r={`-${rupiah(nota.discount)}`} /> : null}
+                {nota.tax ? <Row l="Pajak" r={rupiah(nota.tax)} /> : null}
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "17px", fontWeight: 800, color: "#0f172a", margin: "6px 0" }}>
+                  <span>TOTAL</span><span>{rupiah(nota.total)}</span>
+                </div>
+                {nota.deposit_amount != null ? (
+                  <>
+                    <Row l="Deposit (DP)" r={rupiah(nota.deposit_amount)} />
+                    <Row l={isDeposit ? "Sisa Tagihan" : "Pelunasan"} r={rupiah(isDeposit ? nota.remaining : (nota.settle_paid ?? 0))} />
+                  </>
+                ) : (
+                  <Row l={`Bayar (${nota.payment_method})`} r={rupiah(nota.paid_amount)} />
+                )}
+              </div>
+
+              <div style={{ textAlign: "center", marginTop: "14px", fontSize: "11px", color: "#94a3b8" }}>
+                {settings.receipt_footer || "Terima kasih telah berbelanja!"}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// Reusable nota/receipt dialog with Cetak / Kirim WA (teks) / Salin / Bagikan Gambar.
+export function NotaDialog({ nota, onClose, settings = {} }) {
+  const [phone, setPhone] = useState("");
+  useEffect(() => { setPhone(nota?.customer_phone || ""); }, [nota]);
+
+  const open = !!nota;
+  const status = nota ? paymentStatus(nota) : "";
+  const isDeposit = status === "DEPOSIT";
+
+  const doPrint = async () => {
+    try {
+      const mode = await printReceiptSmart(nota, settings);
+      if (mode === "bluetooth") toast.success("Nota dikirim ke printer Bluetooth");
+    } catch (e) { toast.error(e.message || "Gagal mencetak nota"); }
+  };
+  const doWa = () => {
+    const ok = sendReceiptWhatsApp(nota, settings, phone);
+    if (!ok) toast.info("Nomor tujuan kosong — pilih kontak di WhatsApp");
+  };
+  const doCopy = async () => { await copyReceiptText(nota, settings); toast.success("Nota disalin — tinggal tempel di WhatsApp pelanggan"); };
+
   const items = nota?.items || [];
 
   return (
@@ -94,9 +178,7 @@ export function NotaDialog({ nota, onClose, settings = {} }) {
               <label className="text-xs text-muted-foreground">Nomor WhatsApp pelanggan</label>
               <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="cth: 08123456789" data-testid="nota-wa-phone-input" />
             </div>
-            <Button className="w-full gap-2" onClick={shareImage} disabled={busy} data-testid="nota-share-image-button">
-              <ImageIcon className="h-4 w-4" /> {busy ? "Membuat gambar..." : "Bagikan Nota sebagai Gambar"}
-            </Button>
+            <ShareNotaImageButton nota={nota} settings={settings} />
             <Button className="w-full gap-2 bg-[#25D366] text-white hover:bg-[#1ebe5b]" onClick={doWa} data-testid="nota-whatsapp-button">
               <MessageCircle className="h-4 w-4" /> Kirim Teks via WhatsApp
             </Button>
@@ -104,74 +186,6 @@ export function NotaDialog({ nota, onClose, settings = {} }) {
               <Button variant="secondary" className="flex-1 gap-2" onClick={doCopy} data-testid="nota-copy-button"><Copy className="h-4 w-4" /> Salin</Button>
               <Button variant="outline" className="flex-1 gap-2" onClick={doPrint} data-testid="nota-print-button"><Printer className="h-4 w-4" /> Cetak</Button>
               <Button className="flex-1" onClick={onClose} data-testid="nota-close-button">Tutup</Button>
-            </div>
-          </div>
-        )}
-
-        {/* Offscreen card used to render the shareable image (inline hex styles for html2canvas) */}
-        {nota && (
-          <div style={{ position: "fixed", left: "-10000px", top: 0 }} aria-hidden="true">
-            <div ref={cardRef} style={{ width: "460px", padding: "22px", background: "#eef2f7", fontFamily: "Arial, Helvetica, sans-serif" }}>
-              <div style={{ background: "#ffffff", borderRadius: "18px", overflow: "hidden", boxShadow: "0 8px 24px rgba(15,23,42,0.12)" }}>
-                <div style={{ background: "linear-gradient(135deg,#1e3a8a,#2563eb)", color: "#ffffff", padding: "20px 22px", display: "flex", alignItems: "center", gap: "14px" }}>
-                  <div style={{ width: "52px", height: "52px", borderRadius: "12px", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-                    <img src={settings.logo || "/logo.png"} alt="" crossOrigin="anonymous" style={{ maxWidth: "40px", maxHeight: "40px", objectFit: "contain" }} />
-                  </div>
-                  <div style={{ lineHeight: 1.25 }}>
-                    <div style={{ fontSize: "19px", fontWeight: 800 }}>{settings.business_name || "Daneswara POS"}</div>
-                    {settings.address ? <div style={{ fontSize: "11px", opacity: 0.9 }}>{settings.address}</div> : null}
-                    {settings.phone ? <div style={{ fontSize: "11px", opacity: 0.9 }}>Telp: {settings.phone}</div> : null}
-                  </div>
-                </div>
-
-                <div style={{ padding: "18px 22px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                    <div>
-                      <div style={{ fontSize: "16px", fontWeight: 800, color: "#0f172a" }}>{nota.invoice || nota.order_number}</div>
-                      <div style={{ fontSize: "11px", color: "#64748b" }}>{new Date(nota.created_at).toLocaleString("id-ID")}</div>
-                    </div>
-                    <div style={{ background: badge.bg, color: badge.fg, border: `1px solid ${badge.br}`, borderRadius: "999px", padding: "5px 12px", fontSize: "12px", fontWeight: 800 }}>{status}</div>
-                  </div>
-
-                  <div style={{ fontSize: "12px", color: "#334155", marginBottom: "10px" }}>
-                    <div>Pelanggan: <b>{nota.customer_name || "Umum"}</b></div>
-                    {nota.cashier ? <div>Kasir: {nota.cashier}</div> : null}
-                  </div>
-
-                  <div style={{ borderTop: "1px dashed #cbd5e1", paddingTop: "10px" }}>
-                    {items.map((i, idx) => (
-                      <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "6px" }}>
-                        <div style={{ maxWidth: "260px" }}>
-                          <div style={{ color: "#0f172a" }}>{i.name}</div>
-                          <div style={{ fontSize: "11px", color: "#94a3b8" }}>{i.qty} x {rupiah(i.price)}{i.note ? ` • ${i.note}` : ""}</div>
-                        </div>
-                        <div style={{ fontWeight: 700, color: "#0f172a" }}>{rupiah(i.price * i.qty)}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div style={{ borderTop: "1px dashed #cbd5e1", marginTop: "8px", paddingTop: "10px", fontSize: "13px", color: "#334155" }}>
-                    <Row l="Subtotal" r={rupiah(nota.subtotal)} />
-                    {nota.discount ? <Row l="Diskon" r={`-${rupiah(nota.discount)}`} /> : null}
-                    {nota.tax ? <Row l="Pajak" r={rupiah(nota.tax)} /> : null}
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "17px", fontWeight: 800, color: "#0f172a", margin: "6px 0" }}>
-                      <span>TOTAL</span><span>{rupiah(nota.total)}</span>
-                    </div>
-                    {nota.deposit_amount != null ? (
-                      <>
-                        <Row l="Deposit (DP)" r={rupiah(nota.deposit_amount)} />
-                        <Row l={isDeposit ? "Sisa Tagihan" : "Pelunasan"} r={rupiah(isDeposit ? nota.remaining : (nota.settle_paid ?? 0))} />
-                      </>
-                    ) : (
-                      <Row l={`Bayar (${nota.payment_method})`} r={rupiah(nota.paid_amount)} />
-                    )}
-                  </div>
-
-                  <div style={{ textAlign: "center", marginTop: "14px", fontSize: "11px", color: "#94a3b8" }}>
-                    {settings.receipt_footer || "Terima kasih telah berbelanja!"}
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         )}

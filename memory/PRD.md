@@ -258,6 +258,13 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - Dependency baru: `html2canvas@1.4.1` (frontend).
 - Verified via screenshot + unduhan nyata: `nota-INV-260811-0010.png` terbuat (status LUNAS VIA BRI TOKO).
 
+## Update (2026-06) — Gambar nota di struk POS Kasir + Dashboard disembunyikan utk Kasir
+- REFACTOR (`NotaDialog.jsx`): logika kartu PNG + tombol dipisah menjadi komponen ekspor `ShareNotaImageButton({nota, settings})` (reusable), dipakai ulang di dalam NotaDialog.
+- ADDED (`POS.jsx`): tombol **"Bagikan Nota sebagai Gambar"** (`data-testid="nota-share-image-button"`) kini muncul langsung di dialog struk POS (receipt-dialog) setelah pembayaran berhasil — HP: Web Share (langsung ke WhatsApp), desktop: unduh PNG.
+- CHANGED (`Layout.jsx`): item menu Dashboard tidak lagi menyertakan role "Kasir" → Kasir tidak melihat menu Dashboard di sidebar.
+- CHANGED (`App.js` HomeIndex + `Login.jsx`): Kasir yang membuka "/" atau login otomatis diarahkan ke `/pos` (bukan Dashboard).
+- Verified oleh testing_agent (iteration_12.json, frontend 100%, 0 error console): Kasir redirect ke /pos; sidebar Kasir tanpa Dashboard (Owner tetap ada); tombol gambar nota muncul & berfungsi di receipt-dialog utk Kasir & Owner.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.

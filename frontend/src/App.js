@@ -22,6 +22,14 @@ import RiwayatTransaksi from "@/pages/RiwayatTransaksi";
 import Expenses from "@/pages/Expenses";
 import OtherIncome from "@/pages/OtherIncome";
 import ExportData from "@/pages/ExportData";
+import { useAuth } from "@/context/AuthContext";
+import { Navigate as RRNavigate } from "react-router-dom";
+
+function HomeIndex() {
+  const { user } = useAuth();
+  if (user && user.role === "Kasir") return <RRNavigate to="/pos" replace />;
+  return <Dashboard />;
+}
 
 function App() {
   return (
@@ -47,7 +55,7 @@ function App() {
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<Dashboard />} />
+                <Route index element={<HomeIndex />} />
                 <Route path="produk" element={<ProtectedRoute roles={["Owner", "Manager", "Gudang"]}><Products /></ProtectedRoute>} />
                 <Route path="kategori" element={<ProtectedRoute roles={["Owner", "Manager", "Gudang"]}><Categories /></ProtectedRoute>} />
                 <Route path="inventory" element={<ProtectedRoute roles={["Owner", "Manager", "Gudang"]}><Inventory /></ProtectedRoute>} />

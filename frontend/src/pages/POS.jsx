@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import api, { rupiah, formatApiError } from "@/lib/api";
 import { printReceiptSmart } from "@/lib/printer";
-import { NotaDialog } from "@/components/NotaDialog";
+import { NotaDialog, ShareNotaImageButton } from "@/components/NotaDialog";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -916,6 +916,7 @@ export default function POS() {
                 <Button className="w-full gap-2 bg-[#25D366] text-white hover:bg-[#1ebe5b]" onClick={() => sendWhatsApp(receipt)} data-testid="receipt-whatsapp-button">
                   <MessageCircle className="h-4 w-4" /> Kirim Struk via WhatsApp
                 </Button>
+                <ShareNotaImageButton nota={receipt} settings={settings} />
                 <Button variant="secondary" className="w-full gap-2" onClick={() => copyBill(receipt)} data-testid="receipt-copy-button">
                   <Copy className="h-4 w-4" /> Salin Struk
                 </Button>
