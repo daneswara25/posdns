@@ -20,8 +20,8 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      const u = await login(username, password);
-      navigate(u?.role === "Kasir" ? "/pos" : "/");
+      await login(username, password);
+      navigate("/");
     } catch (err) {
       setError(formatApiError(err.response?.data?.detail) || err.message);
     } finally {
