@@ -237,6 +237,10 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 ## Update (2026-06) — Ganti logo posdns.html (logo biru)
 - CHANGED (`frontend/public/posdns.html`): Kedua logo (hero + brand mobile) diganti dengan file baru **"logo biru.png"** (biru gradient, ~470x470 persegi) via base64. Tampil proporsional: desktop 64×64 (tak menimpa judul), mobile 48×48. Selaras dengan aksen biru tema. Verified via screenshot + boundingRect di kedua viewport.
 
+## Update (2026-06) — Fix metode bank di dialog Pelunasan (Pesanan/Orders)
+- FIXED BUG (`Orders.jsx`): Dialog "Pelunasan" di halaman Pesanan masih memakai "Kartu" (belum ikut update Bank Transfer). Kini `METHODS=['Tunai','Bank Transfer','QRIS','E-Wallet']` + sub-rekening `BANKS` (BCA TOKO/BRI TOKO/BCA ADMIN (ELIS)) — sama seperti dialog POS. Memilih "Bank Transfer" menampilkan `settle-bank-options` (default BCA TOKO). Backend `SettleOrderInput`/`complete_order` sudah menerima nilai bank (tidak berubah).
+- Verified oleh testing_agent (iteration_10.json, backend & frontend 100%): pelunasan ORD-260805-0001 dgn "BRI TOKO" berhasil → sale INV-260811-0008 tersimpan `payment_method='BRI TOKO'`. (Catatan: form BUAT deposit ada di POS & sudah pakai Bank Transfer sejak update sebelumnya.)
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.

@@ -10,7 +10,9 @@ import { NumberInput } from "@/components/NumberInput";
 import { toast } from "sonner";
 import { CheckCircle2, Clock, Trash2, Printer, Search } from "lucide-react";
 
-const METHODS = ["Tunai", "Kartu", "QRIS", "E-Wallet"];
+const METHODS = ["Tunai", "Bank Transfer", "QRIS", "E-Wallet"];
+const BANKS = ["BCA TOKO", "BRI TOKO", "BCA ADMIN (ELIS)"];
+const isBank = (m) => BANKS.includes(m);
 
 export default function Orders() {
   const [list, setList] = useState([]);
@@ -96,10 +98,22 @@ export default function Orders() {
         <DialogContent data-testid="settle-dialog">
           <DialogHeader><DialogTitle className="font-display">Pelunasan — Sisa {rupiah(settle?.remaining || 0)}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-2">
-              {METHODS.map((m) => (
-                <button key={m} onClick={() => setMethod(m)} className={`rounded-md border py-3 text-sm font-semibold transition-colors duration-200 ${method === m ? "border-primary bg-accent text-accent-foreground" : "border-border"}`} data-testid={`settle-method-${m}`}>{m}</button>
-              ))}
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                {METHODS.map((m) => {
+                  const active = m === "Bank Transfer" ? isBank(method) : method === m;
+                  return (
+                    <button key={m} onClick={() => setMethod(m === "Bank Transfer" ? BANKS[0] : m)} className={`rounded-md border py-3 text-sm font-semibold transition-colors duration-200 ${active ? "border-primary bg-accent text-accent-foreground" : "border-border"}`} data-testid={`settle-method-${m}`}>{m}</button>
+                  );
+                })}
+              </div>
+              {isBank(method) && (
+                <div className="grid grid-cols-3 gap-2" data-testid="settle-bank-options">
+                  {BANKS.map((b) => (
+                    <button key={b} onClick={() => setMethod(b)} className={`rounded-md border px-2 py-2 text-xs font-semibold transition-colors duration-200 ${method === b ? "border-primary bg-accent text-accent-foreground" : "border-border"}`} data-testid={`settle-bank-${b}`}>{b}</button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="space-y-1"><Label>Nominal Pelunasan</Label><NumberInput value={paid} onValueChange={setPaid} className="h-12 text-lg" data-testid="settle-paid-input" /></div>
           </div>
