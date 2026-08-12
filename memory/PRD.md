@@ -272,6 +272,11 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - ADDED (`DraftPreviewDialog.jsx`): dialog **Preview Penawaran** bertema **amber** (beda jelas dari nota lunas biru), badge "DRAFT — BELUM BAYAR", tanpa info pembayaran/kembalian. Tombol: **Bagikan Penawaran sebagai Gambar** (html2canvas, kartu amber), **Kirim Penawaran via WhatsApp**, **Salin Pesanan** (teks penawaran). Export helper `buildDraftText`.
 - Verified: curl (Draft→DP→Complete) + testing_agent (iteration_13.json, frontend 100%, 0 error) — draft tersimpan di Pesanan, grouping status benar, preview beda dari nota, copy/share image berfungsi, draft bisa jadi DP / langsung lunas. Data test dibersihkan.
 
+## Update (2026-06) — Edit Draft Pesanan
+- ADDED (backend `server.py`): **`PUT /orders/{oid}`** (UpdateOrderInput) — hanya untuk order berstatus **Draft**; memperbarui item/qty/harga/catatan, diskon, jenis pesanan, nama pelanggan, lalu menghitung ulang subtotal/pajak/total/sisa. Menolak order non-draft (400).
+- ADDED (`Orders.jsx`): tombol **Edit** di kartu draft membuka dialog `edit-dialog` — ubah nama & jenis pesanan, ubah qty (+/-/ketik), harga, catatan per item, hapus item, ubah diskon; total dihitung live. Simpan → PUT.
+- Verified: curl (edit qty/harga/diskon menghitung ulang total; non-draft/404 ditolak) + screenshot UI (qty +1 → total Rp105.000). Data test dibersihkan.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.

@@ -238,6 +238,14 @@ class OrderDepositInput(BaseModel):
     deposit_method: Literal["Tunai", "BCA TOKO", "BRI TOKO", "BCA ADMIN (ELIS)", "QRIS", "E-Wallet"] = "Tunai"
 
 
+class UpdateOrderInput(BaseModel):
+    items: List[SaleItem]
+    discount: float = 0
+    tax_rate: float = 0
+    customer_name: Optional[str] = ""
+    order_type: str = "Reguler"
+
+
 class SettleOrderInput(BaseModel):
     payment_method: Literal["Tunai", "BCA TOKO", "BRI TOKO", "BCA ADMIN (ELIS)", "QRIS", "E-Wallet"]
     paid_amount: float = 0
@@ -1167,6 +1175,29 @@ async def complete_order(oid: str, data: SettleOrderInput, user: dict = Depends(
     await db.orders.update_one({"id": oid}, {"$set": {"status": "Selesai", "completed_at": now_iso(), "invoice": invoice, "payment_method": data.payment_method, "settle_paid": data.paid_amount, "remaining": 0}})
     await log_activity(user["tenant_id"], user, "Pesanan Selesai", f"{order['order_number']} -> {invoice}")
     return clean(sale)
+
+
+@api_router.put("/orders/{oid}")
+async def update_order(oid: str, data: UpdateOrderInput, user: dict = Depends(get_current_user)):
+    order = await db.orders.find_one({"id": oid, "tenant_id": user["tenant_id"]})
+    if not order:
+        raise HTTPException(status_code=404, detail="Pesanan tidak ditemukan")
+    if order.get("status") != "Draft":
+        raise HTTPException(status_code=400, detail="Hanya draft (belum bayar) yang bisa diubah")
+    if not data.items:
+        raise HTTPException(status_code=400, detail="Item pesanan kosong")
+    subtotal = sum(i.price * i.qty for i in data.items)
+    taxed = (subtotal - data.discount) * (data.tax_rate / 100)
+    total = subtotal - data.discount + taxed
+    await db.orders.update_one({"id": oid}, {"$set": {
+        "items": [i.model_dump() for i in data.items], "subtotal": subtotal,
+        "discount": data.discount, "tax_rate": data.tax_rate, "tax": taxed, "total": total,
+        "remaining": total, "customer_name": data.customer_name or order.get("customer_name", ""),
+        "order_type": data.order_type or "Reguler",
+    }})
+    await log_activity(user["tenant_id"], user, "Draft Pesanan Diubah", f"{order['order_number']}")
+    order = await db.orders.find_one({"id": oid, "tenant_id": user["tenant_id"]})
+    return clean(order)
 
 
 @api_router.delete("/orders/{oid}")

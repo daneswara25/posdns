@@ -5,13 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { NumberInput } from "@/components/NumberInput";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NotaDialog } from "@/components/NotaDialog";
 import { DraftPreviewDialog, buildDraftText } from "@/components/DraftPreviewDialog";
 import { toast } from "sonner";
-import { CheckCircle2, Clock, Trash2, Printer, Search, FileText, Copy, HandCoins, Wallet } from "lucide-react";
+import { CheckCircle2, Clock, Trash2, Printer, Search, FileText, Copy, HandCoins, Wallet, Pencil, Plus, Minus } from "lucide-react";
 
 const METHODS = ["Tunai", "Bank Transfer", "QRIS", "E-Wallet"];
 const BANKS = ["BCA TOKO", "BRI TOKO", "BCA ADMIN (ELIS)"];
+const ORDER_TYPES = ["Reguler", "Express", "Custom", "Lainnya"];
 const isBank = (m) => BANKS.includes(m);
 
 const GROUPS = [
@@ -54,6 +56,11 @@ export default function Orders() {
   const [q, setQ] = useState("");
   const [nota, setNota] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [edit, setEdit] = useState(null); // draft being edited
+  const [editItems, setEditItems] = useState([]);
+  const [editDiscount, setEditDiscount] = useState("");
+  const [editName, setEditName] = useState("");
+  const [editType, setEditType] = useState("Reguler");
 
   const load = () => { api.get("/orders").then((r) => setList(r.data)); };
   useEffect(() => {
@@ -83,6 +90,35 @@ export default function Orders() {
   };
 
   const del = async (id) => { if (!window.confirm("Hapus pesanan?")) return; await api.delete(`/orders/${id}`); load(); };
+
+  const openEdit = (o) => {
+    setEdit(o);
+    setEditItems((o.items || []).map((i) => ({ ...i })));
+    setEditDiscount(o.discount || 0);
+    setEditName(o.customer_name || "");
+    setEditType(o.order_type || "Reguler");
+  };
+  const setItemQty = (idx, delta) => setEditItems((arr) => arr.map((it, i) => i === idx ? { ...it, qty: Math.max(1, (Number(it.qty) || 1) + delta) } : it));
+  const setItemQtyAbs = (idx, v) => setEditItems((arr) => arr.map((it, i) => i === idx ? { ...it, qty: Math.max(1, parseInt(v || "1", 10) || 1) } : it));
+  const setItemPrice = (idx, v) => setEditItems((arr) => arr.map((it, i) => i === idx ? { ...it, price: Number(v) || 0 } : it));
+  const setItemNote = (idx, v) => setEditItems((arr) => arr.map((it, i) => i === idx ? { ...it, note: v } : it));
+  const removeItem = (idx) => setEditItems((arr) => arr.filter((_, i) => i !== idx));
+  const editSubtotal = editItems.reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.qty) || 0), 0);
+  const editTaxRate = edit?.tax_rate || 0;
+  const editTax = (editSubtotal - (Number(editDiscount) || 0)) * (editTaxRate / 100);
+  const editTotal = editSubtotal - (Number(editDiscount) || 0) + editTax;
+  const submitEdit = async () => {
+    if (editItems.length === 0) return toast.error("Minimal 1 item");
+    try {
+      await api.put(`/orders/${edit.id}`, {
+        items: editItems.map((i) => ({ product_id: i.product_id, name: i.name, price: Number(i.price) || 0, qty: Number(i.qty) || 1, cost: i.cost || 0, note: i.note || "" })),
+        discount: Number(editDiscount) || 0, tax_rate: editTaxRate,
+        customer_name: editName, order_type: editType,
+      });
+      toast.success("Draft pesanan diperbarui");
+      setEdit(null); load();
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
 
   const copyDraft = async (o) => {
     const text = buildDraftText(o, settings);
@@ -122,6 +158,7 @@ export default function Orders() {
         {o.status === "Draft" && (
           <>
             <Button variant="outline" size="sm" className="gap-1" onClick={() => setPreview(o)} data-testid={`preview-order-${o.id}`}><FileText className="h-4 w-4" /> Preview</Button>
+            <Button variant="outline" size="sm" className="gap-1" onClick={() => openEdit(o)} data-testid={`edit-order-${o.id}`}><Pencil className="h-4 w-4" /> Edit</Button>
             <Button variant="secondary" size="sm" className="gap-1" onClick={() => copyDraft(o)} data-testid={`copy-order-${o.id}`}><Copy className="h-4 w-4" /> Salin</Button>
             <Button size="sm" variant="outline" className="gap-1" onClick={() => { setDp(o); setDpMethod("Tunai"); setDpAmt(""); }} data-testid={`dp-order-${o.id}`}><HandCoins className="h-4 w-4" /> Jadi DP</Button>
             <Button size="sm" className="gap-1" onClick={() => { setSettle(o); setMethod("Tunai"); setPaid(o.total); }} data-testid={`pay-order-${o.id}`}><Wallet className="h-4 w-4" /> Lunasi</Button>
@@ -170,8 +207,69 @@ export default function Orders() {
         );
       })}
 
-      {/* Deposit (DP) dialog for drafts */}
-      <Dialog open={!!dp} onOpenChange={() => setDp(null)}>
+      {/* Edit draft dialog */}
+      <Dialog open={!!edit} onOpenChange={() => setEdit(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto" data-testid="edit-dialog">
+          <DialogHeader><DialogTitle className="font-display">Edit Draft — {edit?.order_number}</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>Nama Pesanan / Pelanggan</Label>
+                <Input value={editName} onChange={(e) => setEditName(e.target.value)} data-testid="edit-name-input" />
+              </div>
+              <div className="space-y-1">
+                <Label>Jenis Pesanan</Label>
+                <Select value={editType} onValueChange={setEditType}>
+                  <SelectTrigger data-testid="edit-type-select"><SelectValue /></SelectTrigger>
+                  <SelectContent>{ORDER_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Item Pesanan</Label>
+              {editItems.length === 0 && <p className="text-sm text-muted-foreground">Semua item dihapus — tambahkan minimal 1 item.</p>}
+              {editItems.map((it, idx) => (
+                <div key={idx} className="rounded-md border border-border p-3" data-testid={`edit-item-${idx}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-medium">{it.name}</p>
+                    <button onClick={() => removeItem(idx)} className="shrink-0 text-destructive" data-testid={`edit-item-remove-${idx}`}><Trash2 className="h-4 w-4" /></button>
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-xs text-muted-foreground">Jumlah</span>
+                      <div className="mt-1 flex items-center gap-2">
+                        <button onClick={() => setItemQty(idx, -1)} className="flex h-7 w-7 items-center justify-center rounded-md bg-secondary" data-testid={`edit-item-minus-${idx}`}><Minus className="h-3.5 w-3.5" /></button>
+                        <input type="number" min="1" value={it.qty} onChange={(e) => setItemQtyAbs(idx, e.target.value)} onFocus={(e) => e.target.select()} className="h-7 w-14 rounded-md border border-border bg-background text-center text-sm font-semibold" data-testid={`edit-item-qty-${idx}`} />
+                        <button onClick={() => setItemQty(idx, 1)} className="flex h-7 w-7 items-center justify-center rounded-md bg-secondary" data-testid={`edit-item-plus-${idx}`}><Plus className="h-3.5 w-3.5" /></button>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground">Harga (Rp)</span>
+                      <NumberInput value={it.price} onValueChange={(v) => setItemPrice(idx, v)} className="mt-1 h-7" data-testid={`edit-item-price-${idx}`} />
+                    </div>
+                  </div>
+                  <Input value={it.note || ""} onChange={(e) => setItemNote(idx, e.target.value)} placeholder="Catatan (opsional)" className="mt-2 h-8 text-xs" data-testid={`edit-item-note-${idx}`} />
+                  <p className="mt-1 text-right text-xs font-semibold">{rupiah((Number(it.price) || 0) * (Number(it.qty) || 0))}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-1">
+              <Label>Diskon (Rp)</Label>
+              <NumberInput value={editDiscount} onValueChange={setEditDiscount} className="h-10" data-testid="edit-discount-input" />
+            </div>
+            <div className="rounded-md bg-secondary/50 p-3 text-sm">
+              <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{rupiah(editSubtotal)}</span></div>
+              {editTaxRate ? <div className="flex justify-between text-muted-foreground"><span>Pajak ({editTaxRate}%)</span><span>{rupiah(editTax)}</span></div> : null}
+              <div className="mt-1 flex justify-between font-bold"><span>Total</span><span data-testid="edit-total">{rupiah(editTotal)}</span></div>
+            </div>
+          </div>
+          <DialogFooter><Button onClick={submitEdit} className="w-full" data-testid="edit-save-button">Simpan Perubahan</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deposit (DP) dialog for drafts */}      <Dialog open={!!dp} onOpenChange={() => setDp(null)}>
         <DialogContent data-testid="dp-dialog">
           <DialogHeader><DialogTitle className="font-display">Proses jadi DP — Total {rupiah(dp?.total || 0)}</DialogTitle></DialogHeader>
           <div className="space-y-4">
