@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { rupiah } from "@/lib/api";
 import { rp, normalizePhone } from "@/lib/printer";
+import { ReceiptShareCard } from "@/components/ReceiptShareCard";
 import { toast } from "sonner";
 import { MessageCircle, Copy, Image as ImageIcon, FileText } from "lucide-react";
 
@@ -68,7 +69,7 @@ export function DraftPreviewDialog({ order, onClose, settings = {} }) {
     if (!cardRef.current) return;
     setBusy(true);
     try {
-      const canvas = await html2canvas(cardRef.current, { scale: 2, useCORS: true, backgroundColor: "#1c1917" });
+      const canvas = await html2canvas(cardRef.current, { scale: 2, useCORS: true, backgroundColor: "#1266d6" });
       const blob = await new Promise((res) => canvas.toBlob(res, "image/png"));
       const fname = `penawaran-${order.order_number || "draft"}.png`;
       const file = new File([blob], fname, { type: "image/png" });
@@ -135,76 +136,9 @@ export function DraftPreviewDialog({ order, onClose, settings = {} }) {
           </div>
         )}
 
-        {/* Offscreen quotation card — dark amber theme (distinct from paid receipt). */}
-        {order && (
-          <div style={{ position: "fixed", left: "-10000px", top: 0 }} aria-hidden="true">
-            <div ref={cardRef} style={{ width: "460px", padding: "22px", background: "#1c1917", fontFamily: "Arial, Helvetica, sans-serif" }}>
-              <div style={{ background: "#fffbeb", borderRadius: "18px", overflow: "hidden", border: "2px dashed #f59e0b", boxShadow: "0 8px 24px rgba(0,0,0,0.35)" }}>
-                <div style={{ background: "linear-gradient(135deg,#78350f,#b45309)", color: "#fffbeb", padding: "20px 22px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                    <div style={{ width: "52px", height: "52px", borderRadius: "12px", background: "rgba(255,255,255,0.18)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-                      <img src={settings.logo || "/logo.png"} alt="" crossOrigin="anonymous" style={{ maxWidth: "40px", maxHeight: "40px", objectFit: "contain" }} />
-                    </div>
-                    <div style={{ lineHeight: 1.25 }}>
-                      <div style={{ fontSize: "12px", letterSpacing: "2px", fontWeight: 700, opacity: 0.85 }}>PENAWARAN PESANAN</div>
-                      <div style={{ fontSize: "19px", fontWeight: 800 }}>{settings.business_name || "Daneswara POS"}</div>
-                      {settings.phone ? <div style={{ fontSize: "11px", opacity: 0.9 }}>Telp: {settings.phone}</div> : null}
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ padding: "18px 22px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                    <div>
-                      <div style={{ fontSize: "16px", fontWeight: 800, color: "#1c1917" }}>{order.order_number}</div>
-                      <div style={{ fontSize: "11px", color: "#78716c" }}>{new Date(order.created_at).toLocaleString("id-ID")}</div>
-                    </div>
-                    <div style={{ background: "#fef3c7", color: "#b45309", border: "1px solid #f59e0b", borderRadius: "8px", padding: "6px 12px", fontSize: "12px", fontWeight: 800, letterSpacing: "1px" }}>BELUM BAYAR</div>
-                  </div>
-
-                  <div style={{ fontSize: "12px", color: "#44403c", marginBottom: "10px" }}>
-                    <div>Pelanggan: <b>{order.customer_name || "Umum"}</b></div>
-                    {order.order_type ? <div>Jenis Pesanan: <b>{order.order_type}</b></div> : null}
-                  </div>
-
-                  <div style={{ borderTop: "1px dashed #d6d3d1", paddingTop: "10px" }}>
-                    {items.map((i, idx) => (
-                      <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "6px" }}>
-                        <div style={{ maxWidth: "280px" }}>
-                          <div style={{ color: "#1c1917" }}>{i.name}</div>
-                          <div style={{ fontSize: "11px", color: "#a8a29e" }}>{i.qty} x {rupiah(i.price)}{i.note ? ` • ${i.note}` : ""}</div>
-                        </div>
-                        <div style={{ fontWeight: 700, color: "#1c1917" }}>{rupiah(i.price * i.qty)}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div style={{ borderTop: "1px dashed #d6d3d1", marginTop: "8px", paddingTop: "10px", fontSize: "13px", color: "#44403c" }}>
-                    <QRow l="Subtotal" r={rupiah(order.subtotal)} />
-                    {order.discount ? <QRow l="Diskon" r={`-${rupiah(order.discount)}`} /> : null}
-                    {order.tax ? <QRow l="Pajak" r={rupiah(order.tax)} /> : null}
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "18px", fontWeight: 800, color: "#b45309", margin: "8px 0 4px" }}>
-                      <span>TOTAL</span><span>{rupiah(order.total)}</span>
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: "12px", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: "10px", padding: "10px 12px", fontSize: "11px", color: "#92400e", textAlign: "center" }}>
-                    Pesanan ini <b>belum dibayar</b>. Mohon konfirmasi untuk kami proses. 🙏
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Offscreen share card — same BRImo-style format as paid receipt; only keterangan & jenis pembayaran differ. */}
+        {order && <ReceiptShareCard ref={cardRef} data={{ ...order, __draft: true }} settings={settings} />}
       </DialogContent>
     </Dialog>
-  );
-}
-
-function QRow({ l, r }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
-      <span style={{ color: "#78716c" }}>{l}</span><span>{r}</span>
-    </div>
   );
 }

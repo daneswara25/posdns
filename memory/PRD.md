@@ -277,6 +277,11 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - ADDED (`Orders.jsx`): tombol **Edit** di kartu draft membuka dialog `edit-dialog` — ubah nama & jenis pesanan, ubah qty (+/-/ketik), harga, catatan per item, hapus item, ubah diskon; total dihitung live. Simpan → PUT.
 - Verified: curl (edit qty/harga/diskon menghitung ulang total; non-draft/404 ditolak) + screenshot UI (qty +1 → total Rp105.000). Data test dibersihkan.
 
+## Update (2026-06) — Format Bagikan Gambar gaya BRImo (terpadu)
+- ADDED (`ReceiptShareCard.jsx`): satu kartu gambar bersama bergaya struk transfer **BRImo** — background biru, kartu putih tepi bergerigi (scallop), logo + nama toko, heading/keterangan, baris label:nilai (Tanggal, Nomor Referensi, Nama Pelanggan, Kasir, **Jenis Pembayaran**, Jenis Pesanan, Catatan), Rincian Pesanan, ringkasan nominal, **Total** biru besar, footer.
+- CHANGED: `ShareNotaImageButton` (NotaDialog) & `DraftPreviewDialog` kini memakai `ReceiptShareCard` yang sama. Perbedaan HANYA pada **keterangan** (Transaksi Berhasil / Uang Muka (DP) Diterima / Menunggu Pembayaran) dan **jenis pembayaran** (metode bayar / Belum Dibayar). Kartu amber lama & kartu biru lama dihapus.
+- Verified via unduhan PNG nyata: draft → "Menunggu Pembayaran" + "Belum Dibayar"; lunas → "Transaksi Berhasil" + "Tunai". Layout identik. Data uji dibersihkan.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
