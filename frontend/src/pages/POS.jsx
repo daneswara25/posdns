@@ -23,6 +23,7 @@ import { Search, Plus, Minus, Trash2, X, ArrowLeft, ShoppingCart, ScanLine, Chec
 
 const METHODS = ["Tunai", "Bank Transfer", "QRIS", "E-Wallet"];
 const BANKS = ["BCA TOKO", "BRI TOKO", "BCA ADMIN (ELIS)"];
+const ORDER_TYPES = ["Reguler", "Express", "Custom", "Lainnya"];
 const isBank = (m) => BANKS.includes(m);
 
 const POS_GRID = {
@@ -79,7 +80,10 @@ export default function POS() {
   const [settings, setSettings] = useState({});
   const [customers, setCustomers] = useState([]);
   const [customerId, setCustomerId] = useState("");
-  const [held, setHeld] = useState([]);
+  const [holdOpen, setHoldOpen] = useState(false);
+  const [holdName, setHoldName] = useState("");
+  const [holdType, setHoldType] = useState("Reguler");
+  const [holdBusy, setHoldBusy] = useState(false);
   const [depositOpen, setDepositOpen] = useState(false);
   const [depositAmt, setDepositAmt] = useState("");
   const [nota, setNota] = useState(null);
@@ -112,25 +116,31 @@ export default function POS() {
       setTaxRate(r.data?.tax_rate || 0);
     });
     api.get("/customers").then((r) => setCustomers(r.data));
-    api.get("/held-orders").then((r) => setHeld(r.data));
   };
   useEffect(load, []);
 
-  const holdOrder = async () => {
+  const openHold = () => {
     if (cart.length === 0) return toast.error("Keranjang kosong");
-    const label = window.prompt("Label pesanan (mis. Order Budi / Antrian 3):", `Order ${held.length + 1}`);
-    if (!label) return;
-    await api.post("/held-orders", { label, items: cart, discount: Number(discount) || 0 });
-    setCart([]); setDiscount(0); setCartOpen(false);
-    api.get("/held-orders").then((r) => setHeld(r.data));
-    toast.success("Pesanan ditahan");
+    const c = customers.find((x) => x.id === customerId);
+    setHoldName(c?.name || "");
+    setHoldType("Reguler");
+    setHoldOpen(true);
   };
-  const resumeOrder = async (h) => {
-    setCart((h.items || []).map((i) => ({ ...i, note: i.note || "", lineId: i.lineId || `${i.product_id}|${i.note || ""}` })));
-    setDiscount(h.discount || 0);
-    await api.delete(`/held-orders/${h.id}`);
-    api.get("/held-orders").then((r) => setHeld(r.data));
-    toast.success(`Melanjutkan ${h.label}`);
+  const submitHold = async () => {
+    if (cart.length === 0) return toast.error("Keranjang kosong");
+    setHoldBusy(true);
+    try {
+      await api.post("/orders", {
+        customer_id: customerId || null,
+        customer_name: holdName || "",
+        items: cart, discount: Number(discount) || 0, tax_rate: taxRate,
+        deposit_amount: 0, order_type: holdType,
+      });
+      toast.success("Draft pesanan disimpan di menu Pesanan");
+      setHoldOpen(false); setHoldName(""); setHoldType("Reguler");
+      setCart([]); setDiscount(0); setCustomerId(""); setCartOpen(false);
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    finally { setHoldBusy(false); }
   };
   const submitDeposit = async () => {
     if (cart.length === 0) return toast.error("Keranjang kosong");
@@ -429,7 +439,7 @@ export default function POS() {
       <div className="space-y-2 border-b border-border p-4">
         <div className="flex items-center justify-between pr-8">
           <h3 className="font-display text-lg font-semibold">Keranjang</h3>
-          <Button variant="outline" size="sm" className="gap-1" onClick={holdOrder} data-testid="pos-hold-button"><PauseCircle className="h-4 w-4" /> Tahan</Button>
+          <Button variant="outline" size="sm" className="gap-1" onClick={openHold} data-testid="pos-hold-button"><PauseCircle className="h-4 w-4" /> Tahan (Draft)</Button>
         </div>
         <Popover open={custOpen} onOpenChange={setCustOpen}>
           <PopoverTrigger asChild>
@@ -468,15 +478,6 @@ export default function POS() {
             </Command>
           </PopoverContent>
         </Popover>
-        {held.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {held.map((h) => (
-              <button key={h.id} onClick={() => resumeOrder(h)} className="flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium hover:bg-accent" data-testid={`resume-${h.id}`}>
-                <PlayCircle className="h-3.5 w-3.5" /> {h.label}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
       <div className="flex-1 overflow-y-auto p-4">
         <AnimatePresence>
@@ -830,6 +831,34 @@ export default function POS() {
             </div>
           </div>
           <DialogFooter><Button onClick={submitDeposit} className="h-12 w-full font-bold" data-testid="deposit-confirm-button">Simpan Pesanan</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Hold as Draft order dialog */}
+      <Dialog open={holdOpen} onOpenChange={(o) => { if (!o) { setHoldOpen(false); setTimeout(() => { document.body.style.pointerEvents = ""; }, 100); } }}>
+        <DialogContent data-testid="hold-dialog">
+          <DialogHeader><DialogTitle className="font-display">Tahan sebagai Draft Pesanan</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Pesanan disimpan di menu <b>Pesanan</b> sebagai draft (belum bayar). Total {rupiah(total)}.</p>
+            <div className="space-y-1">
+              <Label>Nama Pesanan / Pelanggan</Label>
+              <Input value={holdName} onChange={(e) => setHoldName(e.target.value)} placeholder="cth: Order Budi / Antrian 3" data-testid="hold-name-input" />
+            </div>
+            <div className="space-y-1">
+              <Label>Jenis Pesanan</Label>
+              <Select value={holdType} onValueChange={setHoldType}>
+                <SelectTrigger data-testid="hold-type-select"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {ORDER_TYPES.map((t) => <SelectItem key={t} value={t} data-testid={`hold-type-${t}`}>{t}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={submitHold} disabled={holdBusy} className="h-12 w-full font-bold" data-testid="hold-confirm-button">
+              {holdBusy ? "Menyimpan..." : "Simpan Draft"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

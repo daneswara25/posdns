@@ -265,6 +265,13 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - CHANGED (`App.js` HomeIndex + `Login.jsx`): Kasir yang membuka "/" atau login otomatis diarahkan ke `/pos` (bukan Dashboard).
 - Verified oleh testing_agent (iteration_12.json, frontend 100%, 0 error console): Kasir redirect ke /pos; sidebar Kasir tanpa Dashboard (Owner tetap ada); tombol gambar nota muncul & berfungsi di receipt-dialog utk Kasir & Owner.
 
+## Update (2026-06) — Draft Pesanan (Tahan) + Preview Penawaran
+- CHANGED (`POS.jsx`): tombol **"Tahan"** kini menyimpan pesanan sebagai **DRAFT (belum bayar)** ke menu **Pesanan** (bukan lagi keranjang POS). Dialog `hold-dialog`: input nama + pilih **jenis pesanan** (Reguler/Express/Custom/Lainnya). Fitur held-orders lama (resume chip di keranjang) dihapus.
+- CHANGED (backend `server.py`): `POST /orders` set `status="Draft"` bila `deposit_amount<=0` (else "Proses"), simpan field `order_type`. Endpoint baru **`POST /orders/{oid}/deposit`** (OrderDepositInput) → ubah Draft→Proses dengan DP. `POST /orders/{oid}/complete` juga bekerja utk Draft (langsung lunas).
+- CHANGED (`Orders.jsx`): halaman Pesanan dikelompokkan per **status**: Draft/Belum Bayar, DP/Proses, Selesai. Kartu draft: tombol **Preview**, **Salin**, **Jadi DP**, **Lunasi**. Badge jenis pesanan tampil di kartu.
+- ADDED (`DraftPreviewDialog.jsx`): dialog **Preview Penawaran** bertema **amber** (beda jelas dari nota lunas biru), badge "DRAFT — BELUM BAYAR", tanpa info pembayaran/kembalian. Tombol: **Bagikan Penawaran sebagai Gambar** (html2canvas, kartu amber), **Kirim Penawaran via WhatsApp**, **Salin Pesanan** (teks penawaran). Export helper `buildDraftText`.
+- Verified: curl (Draft→DP→Complete) + testing_agent (iteration_13.json, frontend 100%, 0 error) — draft tersimpan di Pesanan, grouping status benar, preview beda dari nota, copy/share image berfungsi, draft bisa jadi DP / langsung lunas. Data test dibersihkan.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.

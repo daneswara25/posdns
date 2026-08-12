@@ -229,7 +229,13 @@ class CustomOrderInput(BaseModel):
     tax_rate: float = 0
     deposit_amount: float = 0
     deposit_method: Literal["Tunai", "BCA TOKO", "BRI TOKO", "BCA ADMIN (ELIS)", "QRIS", "E-Wallet"] = "Tunai"
+    order_type: str = "Reguler"
     note: Optional[str] = ""
+
+
+class OrderDepositInput(BaseModel):
+    deposit_amount: float
+    deposit_method: Literal["Tunai", "BCA TOKO", "BRI TOKO", "BCA ADMIN (ELIS)", "QRIS", "E-Wallet"] = "Tunai"
 
 
 class SettleOrderInput(BaseModel):
@@ -1078,6 +1084,7 @@ async def create_order(data: CustomOrderInput, user: dict = Depends(get_current_
         if c:
             cust_name = c["name"]
     count = await db.orders.count_documents({"tenant_id": user["tenant_id"]})
+    is_draft = (data.deposit_amount or 0) <= 0
     doc = {
         "id": new_id(), "tenant_id": user["tenant_id"], "order_number": f"ORD-{datetime.now().strftime('%y%m%d')}-{count + 1:04d}",
         "customer_id": data.customer_id, "customer_name": cust_name,
@@ -1085,11 +1092,36 @@ async def create_order(data: CustomOrderInput, user: dict = Depends(get_current_
         "discount": data.discount, "tax_rate": data.tax_rate, "tax": taxed, "total": total,
         "deposit_amount": data.deposit_amount, "deposit_method": data.deposit_method,
         "remaining": max(0, total - data.deposit_amount), "note": data.note,
-        "status": "Proses", "cashier": user.get("name", ""), "created_at": now_iso(),
+        "order_type": data.order_type or "Reguler",
+        "status": "Draft" if is_draft else "Proses", "cashier": user.get("name", ""), "created_at": now_iso(),
     }
     await db.orders.insert_one(doc)
-    await log_activity(user["tenant_id"], user, "Pesanan Custom + Deposit", f"{doc['order_number']} DP Rp{data.deposit_amount:,.0f}")
+    if is_draft:
+        await log_activity(user["tenant_id"], user, "Draft Pesanan", f"{doc['order_number']} ({doc['order_type']}) — belum bayar")
+    else:
+        await log_activity(user["tenant_id"], user, "Pesanan Custom + Deposit", f"{doc['order_number']} DP Rp{data.deposit_amount:,.0f}")
     return clean(doc)
+
+
+@api_router.post("/orders/{oid}/deposit")
+async def add_order_deposit(oid: str, data: OrderDepositInput, user: dict = Depends(get_current_user)):
+    order = await db.orders.find_one({"id": oid, "tenant_id": user["tenant_id"]})
+    if not order:
+        raise HTTPException(status_code=404, detail="Pesanan tidak ditemukan")
+    if order.get("status") == "Selesai":
+        raise HTTPException(status_code=400, detail="Pesanan sudah selesai")
+    if data.deposit_amount <= 0:
+        raise HTTPException(status_code=400, detail="Nominal DP harus lebih dari 0")
+    if data.deposit_amount > order["total"]:
+        raise HTTPException(status_code=400, detail="Nominal DP melebihi total pesanan")
+    remaining = max(0, order["total"] - data.deposit_amount)
+    await db.orders.update_one({"id": oid}, {"$set": {
+        "deposit_amount": data.deposit_amount, "deposit_method": data.deposit_method,
+        "remaining": remaining, "status": "Proses",
+    }})
+    await log_activity(user["tenant_id"], user, "DP Pesanan", f"{order['order_number']} DP Rp{data.deposit_amount:,.0f}")
+    order.update({"deposit_amount": data.deposit_amount, "deposit_method": data.deposit_method, "remaining": remaining, "status": "Proses"})
+    return clean(order)
 
 
 @api_router.post("/orders/{oid}/complete")

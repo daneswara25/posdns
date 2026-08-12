@@ -4,15 +4,43 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NumberInput } from "@/components/NumberInput";
 import { NotaDialog } from "@/components/NotaDialog";
+import { DraftPreviewDialog, buildDraftText } from "@/components/DraftPreviewDialog";
 import { toast } from "sonner";
-import { CheckCircle2, Clock, Trash2, Printer, Search } from "lucide-react";
+import { CheckCircle2, Clock, Trash2, Printer, Search, FileText, Copy, HandCoins, Wallet } from "lucide-react";
 
 const METHODS = ["Tunai", "Bank Transfer", "QRIS", "E-Wallet"];
 const BANKS = ["BCA TOKO", "BRI TOKO", "BCA ADMIN (ELIS)"];
 const isBank = (m) => BANKS.includes(m);
+
+const GROUPS = [
+  { key: "Draft", label: "Draft / Belum Bayar", tint: "bg-amber-500/15 text-amber-600", icon: FileText },
+  { key: "Proses", label: "DP / Proses", tint: "bg-orange-500/15 text-orange-600", icon: Clock },
+  { key: "Selesai", label: "Selesai", tint: "bg-emerald-500/15 text-emerald-600", icon: CheckCircle2 },
+];
+
+function MethodPicker({ method, setMethod, prefix }) {
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        {METHODS.map((m) => {
+          const active = m === "Bank Transfer" ? isBank(method) : method === m;
+          return (
+            <button key={m} onClick={() => setMethod(m === "Bank Transfer" ? BANKS[0] : m)} className={`rounded-md border py-3 text-sm font-semibold transition-colors duration-200 ${active ? "border-primary bg-accent text-accent-foreground" : "border-border"}`} data-testid={`${prefix}-method-${m}`}>{m}</button>
+          );
+        })}
+      </div>
+      {isBank(method) && (
+        <div className="grid grid-cols-3 gap-2" data-testid={`${prefix}-bank-options`}>
+          {BANKS.map((b) => (
+            <button key={b} onClick={() => setMethod(b)} className={`rounded-md border px-2 py-2 text-xs font-semibold transition-colors duration-200 ${method === b ? "border-primary bg-accent text-accent-foreground" : "border-border"}`} data-testid={`${prefix}-bank-${b}`}>{b}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Orders() {
   const [list, setList] = useState([]);
@@ -20,8 +48,12 @@ export default function Orders() {
   const [settle, setSettle] = useState(null);
   const [method, setMethod] = useState("Tunai");
   const [paid, setPaid] = useState("");
+  const [dp, setDp] = useState(null); // order being given a deposit
+  const [dpMethod, setDpMethod] = useState("Tunai");
+  const [dpAmt, setDpAmt] = useState("");
   const [q, setQ] = useState("");
   const [nota, setNota] = useState(null);
+  const [preview, setPreview] = useState(null);
 
   const load = () => { api.get("/orders").then((r) => setList(r.data)); };
   useEffect(() => {
@@ -29,11 +61,8 @@ export default function Orders() {
     api.get("/settings").then((r) => setSettings(r.data || {}));
   }, []);
 
-  const printNota = (o) => setNota(o);
-
   const complete = async () => {
-    const remaining = settle.remaining;
-    if (Number(paid) < remaining) return toast.error("Nominal pelunasan kurang");
+    if (Number(paid) < settle.remaining) return toast.error("Nominal pelunasan kurang");
     try {
       const { data } = await api.post(`/orders/${settle.id}/complete`, { payment_method: method, paid_amount: Number(paid) });
       toast.success("Pesanan selesai & struk dibuat");
@@ -41,75 +70,128 @@ export default function Orders() {
       setNota(data);
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
+
+  const submitDp = async () => {
+    const amt = Number(dpAmt) || 0;
+    if (amt <= 0) return toast.error("Masukkan nominal DP");
+    if (amt > dp.total) return toast.error("Nominal DP melebihi total");
+    try {
+      await api.post(`/orders/${dp.id}/deposit`, { deposit_amount: amt, deposit_method: dpMethod });
+      toast.success("DP tersimpan — pesanan masuk Proses");
+      setDp(null); setDpAmt(""); load();
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
+
   const del = async (id) => { if (!window.confirm("Hapus pesanan?")) return; await api.delete(`/orders/${id}`); load(); };
+
+  const copyDraft = async (o) => {
+    const text = buildDraftText(o, settings);
+    try { await navigator.clipboard.writeText(text); }
+    catch {
+      const ta = document.createElement("textarea"); ta.value = text;
+      document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
+    }
+    toast.success("Draft pesanan disalin — tinggal tempel di WhatsApp");
+  };
 
   const term = q.trim().toLowerCase();
   const filtered = term
-    ? list.filter((o) => `${o.order_number} ${o.customer_name || ""} ${o.status}`.toLowerCase().includes(term))
+    ? list.filter((o) => `${o.order_number} ${o.customer_name || ""} ${o.status} ${o.order_type || ""}`.toLowerCase().includes(term))
     : list;
+
+  const renderCard = (o) => (
+    <div key={o.id} className="rounded-lg border border-border bg-card p-4" data-testid={`order-${o.id}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="truncate font-semibold">{o.order_number}</p>
+            {o.order_type && <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground" data-testid={`order-type-${o.id}`}>{o.order_type}</span>}
+          </div>
+          <p className="text-xs text-muted-foreground">{o.customer_name || "Tanpa nama"} · {new Date(o.created_at).toLocaleString("id-ID")}</p>
+        </div>
+        <span className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${o.status === "Selesai" ? "bg-emerald-500/15 text-emerald-600" : o.status === "Draft" ? "bg-amber-500/15 text-amber-600" : "bg-orange-500/15 text-orange-600"}`}>
+          {o.status === "Selesai" ? <CheckCircle2 className="h-3 w-3" /> : o.status === "Draft" ? <FileText className="h-3 w-3" /> : <Clock className="h-3 w-3" />} {o.status === "Draft" ? "Belum Bayar" : o.status}
+        </span>
+      </div>
+      <div className="mt-3 space-y-1 text-sm">
+        <div className="flex justify-between text-muted-foreground"><span>Total</span><span>{rupiah(o.total)}</span></div>
+        {o.status !== "Draft" && <div className="flex justify-between text-muted-foreground"><span>Deposit (DP)</span><span>{rupiah(o.deposit_amount)}</span></div>}
+        {o.status !== "Draft" && <div className="flex justify-between font-semibold"><span>Sisa</span><span className={o.remaining > 0 ? "text-orange-600" : ""}>{rupiah(o.remaining)}</span></div>}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {o.status === "Draft" && (
+          <>
+            <Button variant="outline" size="sm" className="gap-1" onClick={() => setPreview(o)} data-testid={`preview-order-${o.id}`}><FileText className="h-4 w-4" /> Preview</Button>
+            <Button variant="secondary" size="sm" className="gap-1" onClick={() => copyDraft(o)} data-testid={`copy-order-${o.id}`}><Copy className="h-4 w-4" /> Salin</Button>
+            <Button size="sm" variant="outline" className="gap-1" onClick={() => { setDp(o); setDpMethod("Tunai"); setDpAmt(""); }} data-testid={`dp-order-${o.id}`}><HandCoins className="h-4 w-4" /> Jadi DP</Button>
+            <Button size="sm" className="gap-1" onClick={() => { setSettle(o); setMethod("Tunai"); setPaid(o.total); }} data-testid={`pay-order-${o.id}`}><Wallet className="h-4 w-4" /> Lunasi</Button>
+          </>
+        )}
+        {o.status === "Proses" && (
+          <Button className="flex-1" onClick={() => { setSettle(o); setMethod("Tunai"); setPaid(o.remaining); }} data-testid={`complete-order-${o.id}`}>Selesaikan & Lunasi</Button>
+        )}
+        {o.status !== "Draft" && (
+          <Button variant="outline" size="sm" className="gap-1" onClick={() => setNota(o)} data-testid={`reprint-order-${o.id}`}><Printer className="h-4 w-4" /> Nota</Button>
+        )}
+        <Button variant="ghost" size="icon" onClick={() => del(o.id)} data-testid={`delete-order-${o.id}`}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Pesanan Custom</p>
-        <h1 className="font-display text-3xl font-bold tracking-tight">Pesanan & Deposit</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Buat pesanan dengan uang muka (DP) dari halaman Kasir POS. Lunasi di sini saat pesanan selesai.</p>
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Pesanan</p>
+        <h1 className="font-display text-3xl font-bold tracking-tight">Pesanan & Draft</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Draft (belum bayar) dari tombol "Tahan" di POS muncul di sini. Preview & kirim penawaran ke pelanggan, lalu proses jadi DP atau langsung lunasi.</p>
       </div>
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari no. pesanan, nama, atau status..." className="pl-10" data-testid="order-search" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari no. pesanan, nama, jenis, atau status..." className="pl-10" data-testid="order-search" />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        {filtered.map((o) => (
-          <div key={o.id} className="rounded-lg border border-border bg-card p-4" data-testid={`order-${o.id}`}>
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="font-semibold">{o.order_number}</p>
-                <p className="text-xs text-muted-foreground">{o.customer_name || "Tanpa nama"} · {new Date(o.created_at).toLocaleString("id-ID")}</p>
-              </div>
-              <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${o.status === "Selesai" ? "bg-emerald-500/15 text-emerald-600" : "bg-orange-500/15 text-orange-600"}`}>
-                {o.status === "Selesai" ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />} {o.status}
-              </span>
+      {list.length === 0 && <p className="text-sm text-muted-foreground">Belum ada pesanan.</p>}
+      {list.length > 0 && filtered.length === 0 && <p className="text-sm text-muted-foreground">Tidak ada pesanan cocok.</p>}
+
+      {GROUPS.map((g) => {
+        const rows = filtered.filter((o) => o.status === g.key);
+        if (rows.length === 0) return null;
+        return (
+          <div key={g.key} className="space-y-3" data-testid={`order-group-${g.key}`}>
+            <div className="flex items-center gap-2">
+              <span className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${g.tint}`}><g.icon className="h-4 w-4" /> {g.label}</span>
+              <span className="text-xs text-muted-foreground">{rows.length} pesanan</span>
             </div>
-            <div className="mt-3 space-y-1 text-sm">
-              <div className="flex justify-between text-muted-foreground"><span>Total</span><span>{rupiah(o.total)}</span></div>
-              <div className="flex justify-between text-muted-foreground"><span>Deposit (DP)</span><span>{rupiah(o.deposit_amount)}</span></div>
-              <div className="flex justify-between font-semibold"><span>Sisa</span><span className={o.remaining > 0 ? "text-orange-600" : ""}>{rupiah(o.remaining)}</span></div>
-            </div>
-            <div className="mt-3 flex gap-2">
-              {o.status !== "Selesai" && <Button className="flex-1" onClick={() => { setSettle(o); setPaid(o.remaining); }} data-testid={`complete-order-${o.id}`}>Selesaikan & Lunasi</Button>}
-              <Button variant="outline" size="sm" className="gap-1" onClick={() => printNota(o)} data-testid={`reprint-order-${o.id}`}><Printer className="h-4 w-4" /> Nota</Button>
-              <Button variant="ghost" size="icon" onClick={() => del(o.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              {rows.map(renderCard)}
             </div>
           </div>
-        ))}
-        {list.length === 0 && <p className="text-sm text-muted-foreground">Belum ada pesanan.</p>}
-        {list.length > 0 && filtered.length === 0 && <p className="text-sm text-muted-foreground">Tidak ada pesanan cocok.</p>}
-      </div>
+        );
+      })}
 
+      {/* Deposit (DP) dialog for drafts */}
+      <Dialog open={!!dp} onOpenChange={() => setDp(null)}>
+        <DialogContent data-testid="dp-dialog">
+          <DialogHeader><DialogTitle className="font-display">Proses jadi DP — Total {rupiah(dp?.total || 0)}</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <MethodPicker method={dpMethod} setMethod={setDpMethod} prefix="dp" />
+            <div className="space-y-1">
+              <Label>Nominal Deposit (DP)</Label>
+              <NumberInput value={dpAmt} onValueChange={setDpAmt} className="h-12 text-lg" data-testid="dp-amount-input" />
+              <p className="text-sm">Sisa tagihan: <span className="font-bold">{rupiah(Math.max(0, (dp?.total || 0) - Number(dpAmt || 0)))}</span></p>
+            </div>
+          </div>
+          <DialogFooter><Button onClick={submitDp} className="w-full" data-testid="dp-confirm-button">Simpan DP</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Settle / Lunasi dialog */}
       <Dialog open={!!settle} onOpenChange={() => setSettle(null)}>
         <DialogContent data-testid="settle-dialog">
-          <DialogHeader><DialogTitle className="font-display">Pelunasan — Sisa {rupiah(settle?.remaining || 0)}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-display">Pelunasan — Sisa {rupiah(settle?.remaining ?? settle?.total ?? 0)}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="grid grid-cols-2 gap-2">
-                {METHODS.map((m) => {
-                  const active = m === "Bank Transfer" ? isBank(method) : method === m;
-                  return (
-                    <button key={m} onClick={() => setMethod(m === "Bank Transfer" ? BANKS[0] : m)} className={`rounded-md border py-3 text-sm font-semibold transition-colors duration-200 ${active ? "border-primary bg-accent text-accent-foreground" : "border-border"}`} data-testid={`settle-method-${m}`}>{m}</button>
-                  );
-                })}
-              </div>
-              {isBank(method) && (
-                <div className="grid grid-cols-3 gap-2" data-testid="settle-bank-options">
-                  {BANKS.map((b) => (
-                    <button key={b} onClick={() => setMethod(b)} className={`rounded-md border px-2 py-2 text-xs font-semibold transition-colors duration-200 ${method === b ? "border-primary bg-accent text-accent-foreground" : "border-border"}`} data-testid={`settle-bank-${b}`}>{b}</button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <MethodPicker method={method} setMethod={setMethod} prefix="settle" />
             <div className="space-y-1"><Label>Nominal Pelunasan</Label><NumberInput value={paid} onValueChange={setPaid} className="h-12 text-lg" data-testid="settle-paid-input" /></div>
           </div>
           <DialogFooter><Button onClick={complete} className="w-full" data-testid="settle-confirm-button">Konfirmasi Selesai</Button></DialogFooter>
@@ -117,6 +199,7 @@ export default function Orders() {
       </Dialog>
 
       <NotaDialog nota={nota} onClose={() => setNota(null)} settings={settings} />
+      <DraftPreviewDialog order={preview} onClose={() => setPreview(null)} settings={settings} />
     </div>
   );
 }
