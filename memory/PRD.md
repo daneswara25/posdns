@@ -286,6 +286,10 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - ADDED (`ReceiptShareCard.jsx`): stempel **"LUNAS"** (hijau transparan, miring) muncul otomatis pada gambar struk untuk **semua transaksi yang sudah dibayar/lunas** (semua metode: Tunai, BCA/BRI/BCA ADMIN, QRIS, E-Wallet). Tidak muncul pada draft (belum bayar) maupun order dengan status DP/Proses. Konten tetap terbaca (opasitas rendah).
 - Verified via unduhan PNG (BRI TOKO) — watermark tampil & teks tetap jelas. Data uji dibersihkan.
 
+## Update (2026-06) — Tema gambar struk: Charcoal + Gold (brand)
+- CHANGED (`ReceiptShareCard.jsx`): tema gambar struk diganti dari biru BRI ke **charcoal (#15171c) + aksen emas (#a9791b)** agar cocok dengan logo emas brand. Tambah garis aksen emas di bawah heading; **Total** kini emas. Latar html2canvas juga charcoal. Stempel LUNAS (hijau) tetap.
+- Verified via unduhan PNG (QRIS) — tampilan elegan, teks jelas, watermark terbaca. Data uji dibersihkan.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.

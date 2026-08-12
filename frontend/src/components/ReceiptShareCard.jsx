@@ -1,12 +1,14 @@
 import { forwardRef } from "react";
 import { rupiah } from "@/lib/api";
 
-// Offscreen BRImo-style transfer-receipt card, shared by the paid receipt
-// (NotaDialog) and the unpaid draft (DraftPreviewDialog). The ONLY differences
-// between paid vs draft are the heading ("keterangan") and the payment type.
-const BLUE = "#1266d6";
-const DARK = "#1f2937";
-const GRAY = "#8a94a6";
+// Offscreen receipt card, shared by the paid receipt (NotaDialog) and the unpaid
+// draft (DraftPreviewDialog). Theme: charcoal + gold to match the brand logo.
+// The ONLY differences between paid vs draft are the heading ("keterangan") and
+// the payment type — plus a "LUNAS" stamp on paid transactions.
+const BG = "#15171c";      // charcoal backdrop (matches dark/gold logo)
+const GOLD = "#a9791b";    // deep gold accent (readable on white)
+const DARK = "#1f2430";
+const GRAY = "#8a92a3";
 
 function Row({ label, value, strong }) {
   return (
@@ -30,7 +32,7 @@ export const ReceiptShareCard = forwardRef(function ReceiptShareCard({ data, set
 
   return (
     <div style={{ position: "fixed", left: "-10000px", top: 0 }} aria-hidden="true">
-      <div ref={ref} style={{ width: "460px", background: BLUE, padding: "30px 22px 26px", fontFamily: "Arial, Helvetica, sans-serif" }}>
+      <div ref={ref} style={{ width: "460px", background: BG, padding: "30px 22px 26px", fontFamily: "Arial, Helvetica, sans-serif" }}>
         {/* scalloped top */}
         <div style={{ display: "flex", justifyContent: "center", overflow: "hidden", height: "10px" }}>
           {bumps.map((_, i) => (
@@ -50,9 +52,10 @@ export const ReceiptShareCard = forwardRef(function ReceiptShareCard({ data, set
             <img src={settings.logo || "/logo.png"} alt="" crossOrigin="anonymous" style={{ maxWidth: "120px", maxHeight: "46px", objectFit: "contain", margin: "0 auto 6px" }} />
             <div style={{ fontSize: "16px", fontWeight: 800, color: DARK, letterSpacing: "0.2px" }}>{settings.business_name || "Daneswara POS"}</div>
             <div style={{ fontSize: "18px", fontWeight: 800, color: DARK, marginTop: "10px" }}>{heading}</div>
+            <div style={{ width: "48px", height: "3px", background: GOLD, borderRadius: "2px", margin: "12px auto 0" }} />
           </div>
 
-          <div style={{ borderTop: "1px solid #eef1f5", margin: "18px 0 4px" }} />
+          <div style={{ borderTop: "1px solid #eef1f5", margin: "16px 0 4px" }} />
 
           {/* meta */}
           <Row label="Tanggal" value={new Date(o.created_at).toLocaleString("id-ID")} />
@@ -103,7 +106,7 @@ export const ReceiptShareCard = forwardRef(function ReceiptShareCard({ data, set
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ color: DARK, fontSize: "16px", fontWeight: 800 }}>Total</span>
-            <span style={{ color: BLUE, fontSize: "22px", fontWeight: 800 }}>{rupiah(o.total)}</span>
+            <span style={{ color: GOLD, fontSize: "22px", fontWeight: 800 }}>{rupiah(o.total)}</span>
           </div>
 
           <div style={{ borderTop: "1px solid #eef1f5", margin: "16px 0 12px" }} />

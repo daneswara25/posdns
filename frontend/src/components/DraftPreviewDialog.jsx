@@ -69,7 +69,7 @@ export function DraftPreviewDialog({ order, onClose, settings = {} }) {
     if (!cardRef.current) return;
     setBusy(true);
     try {
-      const canvas = await html2canvas(cardRef.current, { scale: 2, useCORS: true, backgroundColor: "#1266d6" });
+      const canvas = await html2canvas(cardRef.current, { scale: 2, useCORS: true, backgroundColor: "#15171c" });
       const blob = await new Promise((res) => canvas.toBlob(res, "image/png"));
       const fname = `penawaran-${order.order_number || "draft"}.png`;
       const file = new File([blob], fname, { type: "image/png" });
