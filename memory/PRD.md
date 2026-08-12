@@ -282,6 +282,10 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - CHANGED: `ShareNotaImageButton` (NotaDialog) & `DraftPreviewDialog` kini memakai `ReceiptShareCard` yang sama. Perbedaan HANYA pada **keterangan** (Transaksi Berhasil / Uang Muka (DP) Diterima / Menunggu Pembayaran) dan **jenis pembayaran** (metode bayar / Belum Dibayar). Kartu amber lama & kartu biru lama dihapus.
 - Verified via unduhan PNG nyata: draft → "Menunggu Pembayaran" + "Belum Dibayar"; lunas → "Transaksi Berhasil" + "Tunai". Layout identik. Data uji dibersihkan.
 
+## Update (2026-06) — Watermark LUNAS pada gambar nota
+- ADDED (`ReceiptShareCard.jsx`): stempel **"LUNAS"** (hijau transparan, miring) muncul otomatis pada gambar struk untuk **semua transaksi yang sudah dibayar/lunas** (semua metode: Tunai, BCA/BRI/BCA ADMIN, QRIS, E-Wallet). Tidak muncul pada draft (belum bayar) maupun order dengan status DP/Proses. Konten tetap terbaca (opasitas rendah).
+- Verified via unduhan PNG (BRI TOKO) — watermark tampil & teks tetap jelas. Data uji dibersihkan.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
