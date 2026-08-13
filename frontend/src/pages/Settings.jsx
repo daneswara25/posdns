@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { Store, Save, Printer, Bluetooth, Trash2, AlertTriangle, Monitor, TestTube2, Plus, Pencil, Database, RefreshCw, PackageX } from "lucide-react";
 import {
   connectBluetoothPrinter, disconnectPrinter, isPrinterConnected, getPrinterName,
-  bluetoothSupported, printReceiptSmart,
+  bluetoothSupported, printReceiptSmart, getDevicePrinterConfig, setDevicePrinterConfig,
 } from "@/lib/printer";
 
 export default function Settings() {
@@ -29,7 +29,17 @@ export default function Settings() {
   const [pForm, setPForm] = useState({ name: "", connection: "desktop", paper_width: "80" });
 
   useEffect(() => {
-    api.get("/settings").then((r) => setForm((f) => ({ ...f, ...r.data, print_mode: r.data?.print_mode || "desktop", paper_width: r.data?.paper_width || "58", printers: r.data?.printers || [], active_printer: r.data?.active_printer || "" })));
+    api.get("/settings").then((r) => {
+      const dev = getDevicePrinterConfig();
+      setForm((f) => ({
+        ...f, ...r.data,
+        // Printer fields come from THIS device (localStorage), not the account.
+        print_mode: dev.print_mode || "desktop",
+        paper_width: dev.paper_width || "58",
+        printers: dev.printers || [],
+        active_printer: dev.active_printer || "",
+      }));
+    });
     // eslint-disable-next-line
   }, []);
 
@@ -74,9 +84,18 @@ export default function Settings() {
   };
 
   const save = async () => {
+    // Printer config is saved to THIS device only (independent per device).
+    setDevicePrinterConfig({ print_mode: form.print_mode, paper_width: form.paper_width, printers: form.printers, active_printer: form.active_printer });
     try {
-      await api.put("/settings", { ...form, tax_rate: Number(form.tax_rate) });
-      toast.success("Pengaturan disimpan");
+      const canEditBusiness = user?.role === "Owner" || user?.role === "Manager";
+      if (canEditBusiness) {
+        await api.put("/settings", {
+          business_name: form.business_name, address: form.address, phone: form.phone,
+          currency: form.currency, tax_rate: Number(form.tax_rate), receipt_footer: form.receipt_footer,
+          logo: form.logo,
+        });
+      }
+      toast.success("Pengaturan printer disimpan di perangkat ini");
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail));
     }
@@ -215,7 +234,8 @@ export default function Settings() {
           <h3 className="font-display text-lg font-semibold">Pengaturan Printer</h3>
         </div>
         <p className="mb-4 rounded-md bg-primary/5 px-3 py-2 text-xs text-muted-foreground" data-testid="printer-per-user-note">
-          Pengaturan printer bersifat <b>per akun</b>. Setiap pengguna punya daftar printer, mode cetak, dan printer aktif sendiri — pengaturan terakhir yang Anda simpan akan otomatis dipakai saat Anda login.
+          Pengaturan printer bersifat <b>per perangkat</b>. Daftar printer, mode cetak, printer aktif & lebar kertas disimpan di HP/komputer ini saja — mengubahnya <b>tidak memengaruhi perangkat lain</b>, meski memakai akun yang sama.
+          <br />Catatan: printer Bluetooth thermal hanya bisa terhubung ke <b>satu perangkat dalam satu waktu</b>. Agar 1 printer dipakai banyak perangkat bergantian, gunakan mode <b>USB/Desktop</b>.
         </p>
 
         <div className="space-y-4">

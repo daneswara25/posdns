@@ -6,6 +6,30 @@ let btName = "";
 
 export const rp = (n) => "Rp" + Number(n || 0).toLocaleString("id-ID", { maximumFractionDigits: 0 });
 
+// ---- Per-DEVICE printer config (localStorage) ----
+// Printer setup (list, active printer, mode, paper width) is stored on THIS
+// device only, so two devices never overwrite each other's printer settings.
+const DEVICE_CFG_KEY = "pos_printer_config_v1";
+export function getDevicePrinterConfig() {
+  try {
+    const raw = localStorage.getItem(DEVICE_CFG_KEY);
+    if (!raw) return {};
+    const c = JSON.parse(raw);
+    return c && typeof c === "object" ? c : {};
+  } catch { return {}; }
+}
+export function setDevicePrinterConfig(cfg = {}) {
+  try {
+    localStorage.setItem(DEVICE_CFG_KEY, JSON.stringify({
+      print_mode: cfg.print_mode || "desktop",
+      paper_width: cfg.paper_width || "58",
+      printers: cfg.printers || [],
+      active_printer: cfg.active_printer || "",
+    }));
+  } catch (e) { /* ignore */ }
+  return true;
+}
+
 // Payment status label for a receipt/order: "DEPOSIT" (pending order) or "LUNAS VIA <method>".
 export function paymentStatus(r) {
   const pendingOrder = r && r.deposit_amount != null && r.status && r.status !== "Selesai";
@@ -118,7 +142,13 @@ export async function connectBluetoothPrinter() {
     acceptAllDevices: true,
     optionalServices: KNOWN_SERVICES,
   });
-  const server = await device.gatt.connect();
+  const server = await device.gatt.connect().catch(async (err) => {
+    // BLE printers accept only ONE active connection. Retry once, then explain.
+    await new Promise((r) => setTimeout(r, 700));
+    return device.gatt.connect().catch(() => {
+      throw new Error("Gagal terhubung ke printer. Printer thermal Bluetooth hanya bisa terhubung ke SATU perangkat dalam satu waktu — pastikan printer sudah diputuskan (disconnect) dari perangkat lain, dekat & menyala, lalu coba lagi. Untuk dipakai banyak perangkat sekaligus, gunakan mode USB/Desktop.");
+    });
+  });
   const services = await server.getPrimaryServices();
   let writable = null;
   for (const s of services) {
@@ -321,12 +351,17 @@ export function printDesktop(r, settings) {
 
 // Main entry: prints according to selected mode. Falls back to desktop on error.
 export async function printReceiptSmart(r, settings) {
-  const mode = settings.print_mode || "desktop";
+  // Per-device printer config always wins over server/account settings.
+  const dev = getDevicePrinterConfig();
+  const merged = { ...settings };
+  if (dev.print_mode) merged.print_mode = dev.print_mode;
+  if (dev.paper_width) merged.paper_width = dev.paper_width;
+  const mode = merged.print_mode || "desktop";
   if (mode === "bluetooth") {
-    if (!isPrinterConnected()) throw new Error("Printer Bluetooth belum terhubung. Hubungkan di menu Pengaturan.");
-    await writeBytes(await buildEscPos(r, settings));
+    if (!isPrinterConnected()) throw new Error("Printer Bluetooth belum terhubung di perangkat ini. Hubungkan dulu lewat menu Pengaturan, atau gunakan mode USB/Desktop agar bisa dipakai banyak perangkat.");
+    await writeBytes(await buildEscPos(r, merged));
     return "bluetooth";
   }
-  printDesktop(r, settings);
+  printDesktop(r, merged);
   return "desktop";
 }

@@ -290,6 +290,13 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - CHANGED (`ReceiptShareCard.jsx`): tema gambar struk diganti dari biru BRI ke **charcoal (#15171c) + aksen emas (#a9791b)** agar cocok dengan logo emas brand. Tambah garis aksen emas di bawah heading; **Total** kini emas. Latar html2canvas juga charcoal. Stempel LUNAS (hijau) tetap.
 - Verified via unduhan PNG (QRIS) — tampilan elegan, teks jelas, watermark terbaca. Data uji dibersihkan.
 
+## Update (2026-06) — Setting printer PER-PERANGKAT + penanganan Bluetooth
+- CHANGED (`printer.js`): setup printer (daftar printer, mode cetak, printer aktif, lebar kertas) kini disimpan **per-perangkat di localStorage** (`pos_printer_config_v1`) via `getDevicePrinterConfig`/`setDevicePrinterConfig`. `printReceiptSmart` otomatis meng-*override* setting server dengan config perangkat → dua perangkat tidak saling mengganggu meski akun sama.
+- CHANGED (`Settings.jsx`): load printer fields dari localStorage (bukan server); tombol Simpan menulis config ke perangkat ini saja (business fields tetap ke server utk Owner/Manager). Note diperbarui → "per perangkat" + penjelasan batas Bluetooth.
+- CHANGED (`printer.js` `connectBluetoothPrinter`): retry 1x + pesan error jelas bahwa printer Bluetooth thermal hanya bisa 1 perangkat dalam satu waktu; sarankan mode USB/Desktop utk banyak perangkat. `printReceiptSmart` bluetooth error juga diperjelas.
+- Catatan hardware: BLE thermal = 1 koneksi aktif/waktu (device ke-2 harus tunggu device-1 disconnect). Solusi multi-device simultan = mode USB/Desktop. Install PWA (pintasan Chrome) TIDAK memengaruhi—localStorage tetap per-perangkat & Web Bluetooth tetap jalan.
+- Verified via screenshot: tambah printer → Simpan → localStorage terisi → reload tetap ada; note baru tampil.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
