@@ -258,6 +258,7 @@ async function buildEscPos(r, settings) {
   text(divider);
   (r.items || []).forEach((i) => {
     text(`${i.qty}x ${i.name}\n`);
+    text(`  @${rp(i.price)}\n`);
     text(row("", rp(i.price * i.qty)));
     if (i.note) text(`  * ${i.note}\n`);
   });
@@ -293,7 +294,7 @@ export function printDesktop(r, settings) {
   const logo = settings.logo || `${window.location.origin}/logo.png`;
   const line = (l, rr) => `<div class="row"><span>${l}</span><span>${rr}</span></div>`;
   const items = (r.items || [])
-    .map((i) => line(`${i.qty}x ${i.name}`, rp(i.price * i.qty)) + (i.note ? `<div class="note">* ${i.note}</div>` : ""))
+    .map((i) => line(`${i.qty}x ${i.name}`, rp(i.price * i.qty)) + `<div class="note">@${rp(i.price)}</div>` + (i.note ? `<div class="note">* ${i.note}</div>` : ""))
     .join("");
   const isOrder = r.deposit_amount != null && r.remaining != null && !r.paid_amount;
   const payRows = isOrder

@@ -88,7 +88,10 @@ export function NotaDialog({ nota, onClose, settings = {} }) {
               {nota.customer_name && <p className="text-center">Nama: {nota.customer_name}</p>}
               <div className="my-2 border-t border-dashed border-border" />
               {items.map((i, idx) => (
-                <div key={idx} className="flex justify-between"><span>{i.qty}x {i.name}</span><span>{rupiah(i.price * i.qty)}</span></div>
+                <div key={idx} className="mb-1">
+                  <div className="flex justify-between"><span>{i.qty}x {i.name}</span><span>{rupiah(i.price * i.qty)}</span></div>
+                  <div className="text-muted-foreground">@{rupiah(i.price)}{i.note ? ` • ${i.note}` : ""}</div>
+                </div>
               ))}
               <div className="my-2 border-t border-dashed border-border" />
               <div className="flex justify-between"><span>Subtotal</span><span>{rupiah(nota.subtotal)}</span></div>

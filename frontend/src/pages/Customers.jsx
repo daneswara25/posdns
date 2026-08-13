@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ViewToggle, useViewMode } from "@/components/ViewToggle";
+import { NotaDialog } from "@/components/NotaDialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, History, User, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, History, User, Search, ChevronRight } from "lucide-react";
 
 const EMPTY = { name: "", phone: "", email: "", address: "" };
 
@@ -17,10 +18,15 @@ export default function Customers() {
   const [form, setForm] = useState(EMPTY);
   const [editId, setEditId] = useState(null);
   const [history, setHistory] = useState(null);
+  const [nota, setNota] = useState(null);
+  const [settings, setSettings] = useState({});
   const [view, setView] = useViewMode("view-customers", "besar");
 
   const load = () => { api.get("/customers").then((r) => setList(r.data)); };
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+    api.get("/settings").then((r) => setSettings(r.data || {}));
+  }, []);
 
   const term = q.trim().toLowerCase();
   const filtered = term
@@ -109,15 +115,26 @@ export default function Customers() {
           <DialogHeader><DialogTitle className="font-display">Riwayat — {history?.customer?.name}</DialogTitle></DialogHeader>
           <div className="max-h-[60vh] space-y-2 overflow-y-auto">
             {history?.sales?.length === 0 && <p className="text-sm text-muted-foreground">Belum ada pembelian.</p>}
+            {history?.sales?.length > 0 && <p className="text-xs text-muted-foreground">Ketuk transaksi untuk melihat detail nota.</p>}
             {history?.sales?.map((s) => (
-              <div key={s.id} className="flex justify-between rounded-md bg-secondary px-3 py-2 text-sm">
+              <button
+                key={s.id}
+                onClick={() => setNota(s)}
+                className="flex w-full items-center justify-between gap-2 rounded-md bg-secondary px-3 py-2 text-left text-sm transition-colors hover:bg-accent"
+                data-testid={`history-item-${s.id}`}
+              >
                 <div><p className="font-medium">{s.invoice}</p><p className="text-xs text-muted-foreground">{new Date(s.created_at).toLocaleString("id-ID")}</p></div>
-                <span className="font-semibold">{rupiah(s.total)}</span>
-              </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">{rupiah(s.total)}</span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </button>
             ))}
           </div>
         </DialogContent>
       </Dialog>
+
+      <NotaDialog nota={nota} onClose={() => setNota(null)} settings={settings} />
     </div>
   );
 }

@@ -297,6 +297,11 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - Catatan hardware: BLE thermal = 1 koneksi aktif/waktu (device ke-2 harus tunggu device-1 disconnect). Solusi multi-device simultan = mode USB/Desktop. Install PWA (pintasan Chrome) TIDAK memengaruhi—localStorage tetap per-perangkat & Web Bluetooth tetap jalan.
 - Verified via screenshot: tambah printer → Simpan → localStorage terisi → reload tetap ada; note baru tampil.
 
+## Update (2026-06) — Harga per item di nota/print + link detail riwayat pelanggan
+- CHANGED: harga satuan per item (`@Rp...`) kini tampil di: nota `NotaDialog` (on-screen), struk POS `POS.jsx` (receipt-dialog), print **thermal ESC/POS** & **desktop** (`printer.js` `buildEscPos`/`printDesktop`). Gambar struk (`ReceiptShareCard`) sudah menampilkannya.
+- ADDED (`Customers.jsx`): tiap transaksi di dialog Riwayat pelanggan kini **bisa diklik** (`history-item-<id>`) → membuka `NotaDialog` detail lengkap (item, @harga, subtotal, metode, dll). Ditambah hint "Ketuk transaksi untuk melihat detail nota".
+- Verified via screenshot end-to-end: klik transaksi di Riwayat pelanggan → nota tampil dengan `@Rp4.000`. Data uji dibersihkan.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
