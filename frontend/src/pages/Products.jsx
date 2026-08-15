@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
@@ -15,7 +16,7 @@ import { NumberInput } from "@/components/NumberInput";
 import { ViewToggle, useViewMode } from "@/components/ViewToggle";
 import { Plus, Pencil, Trash2, Search, Package, ListOrdered, ChevronUp, ChevronDown } from "lucide-react";
 
-const EMPTY = { name: "", sku: "", barcode: "", category_id: "", price: "", cost: "", stock: 0, min_stock: 5, unit: "pcs", image: "", active: true };
+const EMPTY = { name: "", sku: "", barcode: "", category_id: "", price: "", cost: "", stock: 0, min_stock: 5, unit: "pcs", image: "", description: "", active: true };
 
 export default function Products() {
   const { user } = useAuth();
@@ -251,6 +252,10 @@ export default function Products() {
             <div className="space-y-1"><Label>Stok</Label><NumberInput value={form.stock} onValueChange={(v) => setForm({ ...form, stock: v })} data-testid="product-stock-input" /></div>
             <div className="space-y-1"><Label>Min. Stok</Label><NumberInput value={form.min_stock} onValueChange={(v) => setForm({ ...form, min_stock: v })} /></div>
             <div className="space-y-1"><Label>Satuan</Label><Input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} /></div>
+            <div className="col-span-2 space-y-1">
+              <Label>Keterangan <span className="text-muted-foreground">(catatan detail produk, opsional)</span></Label>
+              <Textarea value={form.description || ""} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} placeholder="Detail produk, spesifikasi, catatan internal..." data-testid="product-description-input" />
+            </div>
             <div className="col-span-2 space-y-2">
               <Label>Foto Produk <span className="text-muted-foreground">(otomatis dikompres, opsional)</span></Label>
               <div className="flex items-center gap-3">

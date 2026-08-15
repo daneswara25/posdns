@@ -8,17 +8,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { NumberInput } from "@/components/NumberInput";
 import { ProductCombobox } from "@/components/ProductCombobox";
 import { toast } from "sonner";
-import { Plus, PackageCheck, Trash2, ClipboardList, Search } from "lucide-react";
+import { Plus, PackageCheck, Trash2, ClipboardList, Search, Eye, Pencil } from "lucide-react";
 
 export default function Purchases() {
   const [list, setList] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [products, setProducts] = useState([]);
   const [open, setOpen] = useState(false);
+  const [editId, setEditId] = useState(null);
   const [supplierId, setSupplierId] = useState("");
   const [note, setNote] = useState("");
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
+  const [preview, setPreview] = useState(null);
 
   const load = () => {
     api.get("/purchases").then((r) => setList(r.data));
@@ -36,23 +38,42 @@ export default function Purchases() {
     ? list.filter((po) => `${po.po_number} ${po.supplier_name || ""} ${po.status}`.toLowerCase().includes(term))
     : list;
 
+  const openNew = () => {
+    setEditId(null); setSupplierId(""); setNote("");
+    setItems([{ product_id: "", name: "", qty: 1, cost: 0 }]);
+    setOpen(true);
+  };
+  const openEdit = (po) => {
+    setEditId(po.id);
+    setSupplierId(po.supplier_id || "");
+    setNote(po.note || "");
+    setItems((po.items || []).map((i) => ({ product_id: i.product_id, name: i.name, qty: i.qty, cost: i.cost })));
+    setOpen(true);
+  };
+
   const save = async () => {
     const valid = items.filter((i) => i.product_id && i.qty > 0);
     if (valid.length === 0) return toast.error("Tambahkan minimal 1 item");
+    const payload = {
+      supplier_id: supplierId || null,
+      supplier_name: suppliers.find((s) => s.id === supplierId)?.name || "",
+      items: valid.map((i) => ({ product_id: i.product_id, name: products.find((p) => p.id === i.product_id)?.name || i.name || "", qty: Number(i.qty), cost: Number(i.cost) })),
+      note,
+    };
     try {
-      await api.post("/purchases", {
-        supplier_id: supplierId || null,
-        supplier_name: suppliers.find((s) => s.id === supplierId)?.name || "",
-        items: valid.map((i) => ({ product_id: i.product_id, name: products.find((p) => p.id === i.product_id)?.name || "", qty: Number(i.qty), cost: Number(i.cost) })),
-        note,
-      });
-      toast.success("PO dibuat");
-      setOpen(false); setItems([]); setSupplierId(""); setNote(""); load();
+      if (editId) { await api.put(`/purchases/${editId}`, payload); toast.success("PO diperbarui"); }
+      else { await api.post("/purchases", payload); toast.success("PO dibuat"); }
+      setOpen(false); setEditId(null); setItems([]); setSupplierId(""); setNote(""); load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
   const receive = async (id) => {
     if (!window.confirm("Terima barang? Stok akan bertambah otomatis.")) return;
     try { await api.post(`/purchases/${id}/receive`); toast.success("Barang diterima, stok diperbarui"); load(); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
+  const del = async (po) => {
+    if (!window.confirm(`Hapus PO ${po.po_number}?`)) return;
+    try { await api.delete(`/purchases/${po.id}`); toast.success("PO dihapus"); load(); }
     catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
 
@@ -63,7 +84,7 @@ export default function Purchases() {
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Pembelian</p>
           <h1 className="font-display text-3xl font-bold tracking-tight">Purchase Order</h1>
         </div>
-        <Button onClick={() => { setItems([{ product_id: "", name: "", qty: 1, cost: 0 }]); setOpen(true); }} className="gap-2" data-testid="add-po-button"><Plus className="h-4 w-4" /> Buat PO</Button>
+        <Button onClick={openNew} className="gap-2" data-testid="add-po-button"><Plus className="h-4 w-4" /> Buat PO</Button>
       </div>
 
       <div className="relative max-w-sm">
@@ -84,7 +105,12 @@ export default function Purchases() {
                 <td className="px-4 py-3 text-right font-semibold">{rupiah(po.total)}</td>
                 <td className="px-4 py-3"><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${po.status === "Diterima" ? "bg-emerald-500/15 text-emerald-600" : "bg-orange-500/15 text-orange-600"}`}>{po.status}</span></td>
                 <td className="px-4 py-3 text-right">
-                  {po.status !== "Diterima" && <Button size="sm" variant="outline" className="gap-1" onClick={() => receive(po.id)} data-testid={`receive-po-${po.id}`}><PackageCheck className="h-4 w-4" /> Terima</Button>}
+                  <div className="flex justify-end gap-1">
+                    <Button size="sm" variant="ghost" className="gap-1" onClick={() => setPreview(po)} data-testid={`preview-po-${po.id}`}><Eye className="h-4 w-4" /> Preview</Button>
+                    {po.status !== "Diterima" && <Button size="sm" variant="ghost" className="gap-1" onClick={() => openEdit(po)} data-testid={`edit-po-${po.id}`}><Pencil className="h-4 w-4" /> Edit</Button>}
+                    {po.status !== "Diterima" && <Button size="sm" variant="ghost" className="gap-1 text-destructive" onClick={() => del(po)} data-testid={`delete-po-${po.id}`}><Trash2 className="h-4 w-4" /> Hapus</Button>}
+                    {po.status !== "Diterima" && <Button size="sm" variant="outline" className="gap-1" onClick={() => receive(po.id)} data-testid={`receive-po-${po.id}`}><PackageCheck className="h-4 w-4" /> Terima</Button>}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -95,7 +121,7 @@ export default function Purchases() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto" data-testid="po-dialog">
-          <DialogHeader><DialogTitle className="font-display">Buat Purchase Order</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-display">{editId ? "Edit Purchase Order" : "Buat Purchase Order"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1">
               <Label>Supplier</Label>
@@ -126,7 +152,42 @@ export default function Purchases() {
             <div className="space-y-1"><Label>Catatan</Label><Input value={note} onChange={(e) => setNote(e.target.value)} /></div>
             <div className="flex justify-between font-display text-lg font-bold"><span>Total</span><span>{rupiah(total)}</span></div>
           </div>
-          <DialogFooter><Button onClick={save} className="w-full" data-testid="save-po-button">Simpan PO</Button></DialogFooter>
+          <DialogFooter><Button onClick={save} className="w-full" data-testid="save-po-button">{editId ? "Simpan Perubahan" : "Simpan PO"}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!preview} onOpenChange={(o) => { if (!o) setPreview(null); }}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto" data-testid="po-preview-dialog">
+          <DialogHeader><DialogTitle className="font-display">Detail PO {preview?.po_number}</DialogTitle></DialogHeader>
+          {preview && (
+            <div className="space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <div><span className="text-muted-foreground">Supplier</span><p className="font-medium">{preview.supplier_name || "—"}</p></div>
+                <div><span className="text-muted-foreground">Status</span><p><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${preview.status === "Diterima" ? "bg-emerald-500/15 text-emerald-600" : "bg-orange-500/15 text-orange-600"}`}>{preview.status}</span></p></div>
+                <div><span className="text-muted-foreground">Dibuat</span><p>{preview.created_at ? new Date(preview.created_at).toLocaleString("id-ID") : "—"}</p></div>
+                {preview.received_at && <div><span className="text-muted-foreground">Diterima</span><p>{new Date(preview.received_at).toLocaleString("id-ID")}</p></div>}
+              </div>
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="w-full text-sm">
+                  <thead className="bg-secondary text-xs uppercase text-muted-foreground">
+                    <tr><th className="px-3 py-2 text-left">Produk</th><th className="px-3 py-2 text-right">Qty</th><th className="px-3 py-2 text-right">Modal</th><th className="px-3 py-2 text-right">Subtotal</th></tr>
+                  </thead>
+                  <tbody>
+                    {(preview.items || []).map((it, i) => (
+                      <tr key={i} className="border-t border-border">
+                        <td className="px-3 py-2">{it.name}</td>
+                        <td className="px-3 py-2 text-right">{it.qty}</td>
+                        <td className="px-3 py-2 text-right">{rupiah(it.cost)}</td>
+                        <td className="px-3 py-2 text-right font-medium">{rupiah(Number(it.qty) * Number(it.cost))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {preview.note && <div><span className="text-muted-foreground">Catatan</span><p>{preview.note}</p></div>}
+              <div className="flex justify-between font-display text-lg font-bold"><span>Total</span><span>{rupiah(preview.total)}</span></div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

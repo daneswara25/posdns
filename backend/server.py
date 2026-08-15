@@ -143,6 +143,7 @@ class ProductInput(BaseModel):
     min_stock: int = 5
     unit: Optional[str] = "pcs"
     image: Optional[str] = ""
+    description: Optional[str] = ""
     active: bool = True
 
 
@@ -1120,6 +1121,36 @@ async def create_purchase(data: PurchaseOrderInput, user: dict = Depends(require
     await db.purchases.insert_one(doc)
     await log_activity(user["tenant_id"], user, "Buat PO", f"{doc['po_number']} - Rp{total:,.0f}")
     return clean(doc)
+
+
+@api_router.put("/purchases/{pid}")
+async def update_purchase(pid: str, data: PurchaseOrderInput, user: dict = Depends(require_roles("Owner", "Manager", "Gudang"))):
+    po = await db.purchases.find_one({"id": pid, "tenant_id": user["tenant_id"]})
+    if not po:
+        raise HTTPException(status_code=404, detail="PO tidak ditemukan")
+    if po.get("status") == "Diterima":
+        raise HTTPException(status_code=400, detail="PO yang sudah diterima tidak dapat diubah")
+    if not data.items:
+        raise HTTPException(status_code=400, detail="Item pembelian kosong")
+    total = sum(i.qty * i.cost for i in data.items)
+    await db.purchases.update_one({"id": pid, "tenant_id": user["tenant_id"]}, {"$set": {
+        "supplier_id": data.supplier_id, "supplier_name": data.supplier_name,
+        "items": [i.model_dump() for i in data.items], "total": total, "note": data.note,
+    }})
+    await log_activity(user["tenant_id"], user, "Ubah PO", f"{po['po_number']} - Rp{total:,.0f}")
+    return {"ok": True}
+
+
+@api_router.delete("/purchases/{pid}")
+async def delete_purchase(pid: str, user: dict = Depends(require_roles("Owner", "Manager", "Gudang"))):
+    po = await db.purchases.find_one({"id": pid, "tenant_id": user["tenant_id"]})
+    if not po:
+        raise HTTPException(status_code=404, detail="PO tidak ditemukan")
+    if po.get("status") == "Diterima":
+        raise HTTPException(status_code=400, detail="PO yang sudah diterima tidak dapat dihapus")
+    await db.purchases.delete_one({"id": pid, "tenant_id": user["tenant_id"]})
+    await log_activity(user["tenant_id"], user, "Hapus PO", po["po_number"])
+    return {"ok": True}
 
 
 @api_router.post("/purchases/{pid}/receive")

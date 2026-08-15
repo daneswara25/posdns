@@ -324,6 +324,13 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 ## Update (2026-06) — Label keterangan sumber angka Omzet & Laba Kotor
 - ADDED (`Reports.jsx`): keterangan kecil di bawah kartu **Total Omzet** (nilai penjualan harga jual × qty, transaksi lunas, sebelum dikurangi modal/biaya) dan **Laba Kotor** (Omzet − HPP; belum termasuk pengeluaran & pendapatan lain). Verified via screenshot.
 
+## Update (2026-06) — Keterangan Produk + Aksi PO (Preview/Edit/Hapus)
+- ADDED (`ProductInput` server.py + `Products.jsx`): field **Keterangan** (`description`) di form Tambah/Edit Produk (Textarea, `product-description-input`) untuk mencatat detail produk internal. Disimpan di data produk; TIDAK ditampilkan di struk/nota/POS (sesuai permintaan user).
+- ADDED (`Purchases.jsx` + server.py): tombol **Preview / Edit / Hapus** di tiap baris PO.
+  - Preview (`preview-po-*`): dialog `po-preview-dialog` menampilkan supplier, status, tanggal dibuat/diterima, tabel item (qty/modal/subtotal), catatan, total. Tersedia untuk SEMUA status.
+  - Edit (`edit-po-*`) & Hapus (`delete-po-*`): HANYA untuk PO status "Menunggu". Backend `PUT /purchases/{pid}` & `DELETE /purchases/{pid}` menolak PO "Diterima" (400) agar stok tidak kacau. Edit memakai ulang form Buat PO (prefill supplier/item/catatan).
+- Verified: curl (description tersimpan; PUT/DELETE Menunggu OK; PUT/DELETE Diterima → 400) + screenshot (baris Menunggu tampil 4 aksi, Diterima hanya Preview, dialog Preview menampilkan detail). Data uji dibersihkan.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
