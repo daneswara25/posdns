@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { NumberInput } from "@/components/NumberInput";
+import { CategoryManager } from "@/components/CategoryManager";
 import { toast } from "sonner";
-import { Plus, Trash2, HandCoins, Search } from "lucide-react";
+import { Plus, Trash2, HandCoins, Search, Tags } from "lucide-react";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const EMPTY = { category: "", amount: "", note: "", date: today() };
@@ -19,11 +20,13 @@ export default function OtherIncome() {
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [q, setQ] = useState("");
+  const [manageOpen, setManageOpen] = useState(false);
 
+  const loadCats = () => api.get("/other-income-categories").then((r) => setCats(r.data));
   const load = () => { api.get("/other-income").then((r) => setList(r.data)); };
   useEffect(() => {
     load();
-    api.get("/other-income-categories").then((r) => setCats(r.data));
+    loadCats();
   }, []);
 
   const term = q.trim().toLowerCase();
@@ -58,9 +61,14 @@ export default function OtherIncome() {
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Keuangan</p>
           <h1 className="font-display text-3xl font-bold tracking-tight">Pendapatan Lain-lain</h1>
         </div>
-        <Button onClick={() => { setForm(EMPTY); setOpen(true); }} className="gap-2" data-testid="add-other-income-button">
-          <Plus className="h-4 w-4" /> Tambah Pendapatan
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setManageOpen(true)} className="gap-2" data-testid="manage-income-categories-button">
+            <Tags className="h-4 w-4" /> Kelola Kategori
+          </Button>
+          <Button onClick={() => { setForm(EMPTY); setOpen(true); }} className="gap-2" data-testid="add-other-income-button">
+            <Plus className="h-4 w-4" /> Tambah Pendapatan
+          </Button>
+        </div>
       </div>
 
       <div className="relative max-w-sm">
@@ -111,7 +119,10 @@ export default function OtherIncome() {
           <DialogHeader><DialogTitle>Tambah Pendapatan Lain-lain</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1">
-              <Label>Kategori</Label>
+              <div className="flex items-center justify-between">
+                <Label>Kategori <span className="text-destructive">*</span></Label>
+                <button type="button" onClick={() => setManageOpen(true)} className="text-xs font-medium text-primary hover:underline" data-testid="income-add-category-link">+ Tambah kategori baru</button>
+              </div>
               <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
                 <SelectTrigger data-testid="other-income-category-select"><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
                 <SelectContent>
@@ -120,8 +131,8 @@ export default function OtherIncome() {
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1"><Label>Nominal (Rp)</Label><NumberInput value={form.amount} onValueChange={(v) => setForm({ ...form, amount: v })} data-testid="other-income-amount-input" /></div>
-              <div className="space-y-1"><Label>Tanggal</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} data-testid="other-income-date-input" /></div>
+              <div className="space-y-1"><Label>Nominal (Rp) <span className="text-destructive">*</span></Label><NumberInput value={form.amount} onValueChange={(v) => setForm({ ...form, amount: v })} data-testid="other-income-amount-input" /></div>
+              <div className="space-y-1"><Label>Tanggal <span className="text-destructive">*</span></Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} data-testid="other-income-date-input" /></div>
             </div>
             <div className="space-y-1"><Label>Catatan (opsional)</Label><Input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="cth: Komisi vendor, biaya express order A" data-testid="other-income-note-input" /></div>
           </div>
@@ -131,6 +142,8 @@ export default function OtherIncome() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CategoryManager open={manageOpen} onOpenChange={setManageOpen} type="income" onChanged={loadCats} />
     </div>
   );
 }

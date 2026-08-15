@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { NumberInput } from "@/components/NumberInput";
+import { CategoryManager } from "@/components/CategoryManager";
 import { toast } from "sonner";
-import { Plus, Trash2, Wallet, Receipt, Search } from "lucide-react";
+import { Plus, Trash2, Wallet, Receipt, Search, Tags } from "lucide-react";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const EMPTY = { category: "", amount: "", note: "", date: today() };
@@ -19,11 +20,13 @@ export default function Expenses() {
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [q, setQ] = useState("");
+  const [manageOpen, setManageOpen] = useState(false);
 
+  const loadCats = () => api.get("/expense-categories").then((r) => setCats(r.data));
   const load = () => { api.get("/expenses").then((r) => setList(r.data)); };
   useEffect(() => {
     load();
-    api.get("/expense-categories").then((r) => setCats(r.data));
+    loadCats();
   }, []);
 
   const term = q.trim().toLowerCase();
@@ -58,9 +61,14 @@ export default function Expenses() {
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Keuangan</p>
           <h1 className="font-display text-3xl font-bold tracking-tight">Pengeluaran</h1>
         </div>
-        <Button onClick={() => { setForm(EMPTY); setOpen(true); }} className="gap-2" data-testid="add-expense-button">
-          <Plus className="h-4 w-4" /> Tambah Pengeluaran
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setManageOpen(true)} className="gap-2" data-testid="manage-expense-categories-button">
+            <Tags className="h-4 w-4" /> Kelola Jenis
+          </Button>
+          <Button onClick={() => { setForm(EMPTY); setOpen(true); }} className="gap-2" data-testid="add-expense-button">
+            <Plus className="h-4 w-4" /> Tambah Pengeluaran
+          </Button>
+        </div>
       </div>
 
       <div className="relative max-w-sm">
@@ -111,7 +119,10 @@ export default function Expenses() {
           <DialogHeader><DialogTitle>Tambah Pengeluaran</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1">
-              <Label>Kategori</Label>
+              <div className="flex items-center justify-between">
+                <Label>Kategori / Jenis <span className="text-destructive">*</span></Label>
+                <button type="button" onClick={() => setManageOpen(true)} className="text-xs font-medium text-primary hover:underline" data-testid="expense-add-category-link">+ Tambah jenis baru</button>
+              </div>
               <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
                 <SelectTrigger data-testid="expense-category-select"><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
                 <SelectContent>
@@ -120,8 +131,8 @@ export default function Expenses() {
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1"><Label>Nominal (Rp)</Label><NumberInput value={form.amount} onValueChange={(v) => setForm({ ...form, amount: v })} data-testid="expense-amount-input" /></div>
-              <div className="space-y-1"><Label>Tanggal</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} data-testid="expense-date-input" /></div>
+              <div className="space-y-1"><Label>Nominal (Rp) <span className="text-destructive">*</span></Label><NumberInput value={form.amount} onValueChange={(v) => setForm({ ...form, amount: v })} data-testid="expense-amount-input" /></div>
+              <div className="space-y-1"><Label>Tanggal <span className="text-destructive">*</span></Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} data-testid="expense-date-input" /></div>
             </div>
             <div className="space-y-1"><Label>Catatan (opsional)</Label><Input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="cth: Beli tinta DTF 1L" data-testid="expense-note-input" /></div>
           </div>
@@ -131,6 +142,8 @@ export default function Expenses() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CategoryManager open={manageOpen} onOpenChange={setManageOpen} type="expense" onChanged={loadCats} />
     </div>
   );
 }

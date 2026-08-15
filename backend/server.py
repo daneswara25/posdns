@@ -759,10 +759,62 @@ async def reset_stock(user: dict = Depends(require_roles("Owner"))):
 
 
 # ---------- Expenses & Profit-Loss ----------
-EXPENSE_CATEGORIES = [
+DEFAULT_EXPENSE_CATS = [
     "Pembelian Bahan DTF", "Pembelian ATK", "Biaya Operasional",
     "Jasa Pengambilan Online", "Pembelian Lain-lain",
 ]
+DEFAULT_INCOME_CATS = [
+    "Biaya layanan", "Biaya express", "Biaya tambahan/order khusus", "Pendapatan komisi",
+]
+
+
+class FinanceCategoryInput(BaseModel):
+    name: str
+    type: Literal["expense", "income"]
+
+
+def _defaults_for(kind: str):
+    return DEFAULT_EXPENSE_CATS if kind == "expense" else DEFAULT_INCOME_CATS
+
+
+async def _merged_category_names(tid: str, kind: str):
+    names = list(_defaults_for(kind))
+    custom = await db.finance_categories.find({"tenant_id": tid, "type": kind}, {"_id": 0}).sort("created_at", 1).to_list(500)
+    for c in custom:
+        if c["name"] not in names:
+            names.append(c["name"])
+    return names
+
+
+@api_router.get("/finance-categories")
+async def list_finance_categories(type: str, user: dict = Depends(require_roles("Owner", "Manager"))):
+    if type not in ("expense", "income"):
+        raise HTTPException(status_code=400, detail="Tipe tidak valid")
+    out = [{"id": None, "name": n, "is_default": True} for n in _defaults_for(type)]
+    custom = await db.finance_categories.find({"tenant_id": user["tenant_id"], "type": type}, {"_id": 0}).sort("created_at", 1).to_list(500)
+    for c in custom:
+        out.append({"id": c["id"], "name": c["name"], "is_default": False})
+    return out
+
+
+@api_router.post("/finance-categories")
+async def create_finance_category(data: FinanceCategoryInput, user: dict = Depends(require_roles("Owner", "Manager"))):
+    name = (data.name or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Nama kategori wajib diisi")
+    existing = await _merged_category_names(user["tenant_id"], data.type)
+    if name.lower() in [n.lower() for n in existing]:
+        raise HTTPException(status_code=400, detail="Kategori sudah ada")
+    doc = {"id": new_id(), "tenant_id": user["tenant_id"], "type": data.type, "name": name, "created_at": now_iso()}
+    await db.finance_categories.insert_one(doc)
+    await log_activity(user["tenant_id"], user, "Tambah Kategori Keuangan", f"{data.type}: {name}")
+    return clean(doc)
+
+
+@api_router.delete("/finance-categories/{cid}")
+async def delete_finance_category(cid: str, user: dict = Depends(require_roles("Owner", "Manager"))):
+    await db.finance_categories.delete_one({"id": cid, "tenant_id": user["tenant_id"]})
+    return {"ok": True}
 
 
 class ExpenseInput(BaseModel):
@@ -774,7 +826,7 @@ class ExpenseInput(BaseModel):
 
 @api_router.get("/expense-categories")
 async def expense_categories(user: dict = Depends(get_current_user)):
-    return EXPENSE_CATEGORIES
+    return await _merged_category_names(user["tenant_id"], "expense")
 
 
 @api_router.get("/expenses")
@@ -810,9 +862,7 @@ async def delete_expense(eid: str, user: dict = Depends(require_roles("Owner", "
     return {"ok": True}
 
 
-OTHER_INCOME_CATEGORIES = [
-    "Biaya layanan", "Biaya express", "Biaya tambahan/order khusus", "Pendapatan komisi",
-]
+OTHER_INCOME_CATEGORIES = DEFAULT_INCOME_CATS
 
 
 class OtherIncomeInput(BaseModel):
@@ -824,7 +874,7 @@ class OtherIncomeInput(BaseModel):
 
 @api_router.get("/other-income-categories")
 async def other_income_categories(user: dict = Depends(get_current_user)):
-    return OTHER_INCOME_CATEGORIES
+    return await _merged_category_names(user["tenant_id"], "income")
 
 
 @api_router.get("/other-income")

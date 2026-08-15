@@ -315,6 +315,12 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - Juga diperbaiki teks penjelasan Laba Bersih di Reports agar sesuai rumus baru (termasuk HPP).
 - Verified: curl (net = masuk − keluar; 2 PO diterima = Rp157.500 sbg kas keluar) + screenshot (Arus Kas Bersih Rp896.500).
 
+## Update (2026-06) — Kategori Keuangan bisa ditambah admin (dinamis)
+- CHANGED (backend `server.py`): kategori pengeluaran & pendapatan lain kini **dinamis per-tenant**. Default tetap, ditambah custom dari koleksi `finance_categories`. Endpoint baru: `GET /finance-categories?type=`, `POST /finance-categories` (nama+type, tolak duplikat), `DELETE /finance-categories/{id}` (Owner/Manager). `GET /expense-categories` & `/other-income-categories` mengembalikan gabungan default+custom.
+- ADDED (`CategoryManager.jsx`): dialog kelola kategori (tambah/hapus; default berlabel "Bawaan" tidak bisa dihapus). Dipakai di Pengeluaran (`Kelola Jenis`) & Pendapatan Lain-lain (`Kelola Kategori`) + link "+ Tambah" di form entri.
+- Field entri diberi penanda wajib (Kategori*, Nominal*, Tanggal*) agar Laba Rugi tetap lancar. Menambah kategori TIDAK mengganggu Laba Rugi (laporan mengelompokkan berdasarkan nama kategori).
+- Verified: curl (tambah kategori → muncul di list & masuk P&L; duplikat 400; hapus) + screenshot UI (tambah "Sewa Tempat UI", default terkunci).
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
