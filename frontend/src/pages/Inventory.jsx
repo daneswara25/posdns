@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ProductCombobox } from "@/components/ProductCombobox";
 import { NumberInput } from "@/components/NumberInput";
 import { toast } from "sonner";
 import { ArrowDownCircle, ArrowUpCircle, SlidersHorizontal, ClipboardList, Search } from "lucide-react";
@@ -109,10 +110,14 @@ export default function Inventory() {
           <div className="space-y-4">
             <div className="space-y-1">
               <Label>Produk</Label>
-              <Select value={form.product_id} onValueChange={(v) => setForm({ ...form, product_id: v })}>
-                <SelectTrigger data-testid="stock-product-select"><SelectValue placeholder="Pilih produk" /></SelectTrigger>
-                <SelectContent>{products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name} (stok: {p.stock})</SelectItem>)}</SelectContent>
-              </Select>
+              <ProductCombobox
+                products={products}
+                value={form.product_id}
+                onChange={(v) => setForm({ ...form, product_id: v })}
+                placeholder="Cari produk..."
+                testId="stock-product-select"
+                renderLabel={(p) => `${p.name} (stok: ${p.stock})`}
+              />
             </div>
             <div className="space-y-1">
               <Label>Tipe</Label>

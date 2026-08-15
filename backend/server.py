@@ -621,7 +621,7 @@ async def report_monthly(user: dict = Depends(require_roles("Owner", "Manager"))
         if 1 <= m <= 12:
             months[m - 1]["other_income"] += e.get("amount", 0)
     for mo in months:
-        mo["net"] = mo["total"] + mo["other_income"] - mo["expense"]
+        mo["net"] = mo["profit"] + mo["other_income"] - mo["expense"]
     return {"year": year, "months": months}
 
 
@@ -900,7 +900,7 @@ async def report_profit_loss(user: dict = Depends(require_roles("Owner", "Manage
         "expenses_by_category": [{"category": k, "amount": v} for k, v in by_cat.items()],
         "other_income_total": other_income_total,
         "other_income_by_category": [{"category": k, "amount": v} for k, v in oi_by_cat.items()],
-        "net_profit": revenue + other_income_total - expense_total,
+        "net_profit": (revenue - hpp) + other_income_total - expense_total,
         "sales_count": len(sales),
         "expense_count": len(expenses),
         "other_income_count": len(other_income),

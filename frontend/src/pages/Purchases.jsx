@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NumberInput } from "@/components/NumberInput";
+import { ProductCombobox } from "@/components/ProductCombobox";
 import { toast } from "sonner";
 import { Plus, PackageCheck, Trash2, ClipboardList, Search } from "lucide-react";
 
@@ -108,10 +109,13 @@ export default function Purchases() {
               {items.map((it, idx) => (
                 <div key={idx} className="grid grid-cols-12 items-end gap-2">
                   <div className="col-span-6">
-                    <Select value={it.product_id} onValueChange={(v) => setItem(idx, { product_id: v, cost: products.find((p) => p.id === v)?.cost || 0 })}>
-                      <SelectTrigger data-testid={`po-item-product-${idx}`}><SelectValue placeholder="Produk" /></SelectTrigger>
-                      <SelectContent>{products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-                    </Select>
+                    <ProductCombobox
+                      products={products}
+                      value={it.product_id}
+                      onChange={(v) => setItem(idx, { product_id: v, cost: products.find((p) => p.id === v)?.cost || 0 })}
+                      placeholder="Cari produk..."
+                      testId={`po-item-product-${idx}`}
+                    />
                   </div>
                   <div className="col-span-2"><NumberInput placeholder="Qty" value={it.qty} onValueChange={(v) => setItem(idx, { qty: v })} data-testid={`po-item-qty-${idx}`} /></div>
                   <div className="col-span-3"><NumberInput placeholder="Modal" value={it.cost} onValueChange={(v) => setItem(idx, { cost: v })} /></div>

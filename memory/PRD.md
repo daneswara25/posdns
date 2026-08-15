@@ -302,6 +302,13 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - ADDED (`Customers.jsx`): tiap transaksi di dialog Riwayat pelanggan kini **bisa diklik** (`history-item-<id>`) → membuka `NotaDialog` detail lengkap (item, @harga, subtotal, metode, dll). Ditambah hint "Ketuk transaksi untuk melihat detail nota".
 - Verified via screenshot end-to-end: klik transaksi di Riwayat pelanggan → nota tampil dengan `@Rp4.000`. Data uji dibersihkan.
 
+## Update (2026-06) — Fix laba bersih + search produk
+- FIX (backend `server.py` `report_profit_loss`): `net_profit` sebelumnya `revenue + oi - expense` (lupa kurangi HPP) → sekarang `(revenue - hpp) + oi - expense`. Ini penyebab laba bersih > laba kotor.
+- FIX (backend `monthly_report`): `net` sebelumnya `total + oi - expense` → sekarang `profit + oi - expense` (profit = laba kotor per-sale sudah dikurangi HPP).
+- ADDED (`ProductCombobox.jsx`): pemilih produk dengan **pencarian** (ketik nama/SKU). Dipakai di **Purchase Order** (`Purchases.jsx`) & **Sesuaikan Stok** (`Inventory.jsx`) menggantikan dropdown biasa.
+- Verified: curl profit-loss (net=692rb = gross, sebelumnya 1.054jt); screenshot PO search "kaos" → 31 hasil terfilter & terpilih.
+- Catatan akuntansi (dijelaskan ke user): pembelian/restok (PO) TIDAK langsung mengurangi laba — modal masuk sebagai HPP hanya saat barang terjual (standar akuntansi: pembelian stok = aset, bukan biaya).
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
