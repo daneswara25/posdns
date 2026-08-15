@@ -907,6 +907,49 @@ async def report_profit_loss(user: dict = Depends(require_roles("Owner", "Manage
     }
 
 
+@api_router.get("/reports/cash-flow")
+async def report_cash_flow(user: dict = Depends(require_roles("Owner", "Manager")),
+                           start: Optional[str] = None, end: Optional[str] = None):
+    """Cash view (kas): money actually received vs money actually paid out.
+    Distinct from P&L — here purchases/restock (received POs) count as cash OUT."""
+    tid = user["tenant_id"]
+    in_range = lambda d: (not start or (d or "")[:10] >= start) and (not end or (d or "")[:10] <= end)
+
+    sales = await db.sales.find({"tenant_id": tid, "refunded": {"$ne": True}}, {"_id": 0}).to_list(20000)
+    sales = [s for s in sales if in_range(s.get("created_at"))]
+    sales_in = sum(s.get("total", 0) for s in sales)
+
+    other_income = await db.other_income.find({"tenant_id": tid}, {"_id": 0}).to_list(20000)
+    other_income = [e for e in other_income if in_range(e.get("date"))]
+    oi_in = sum(e.get("amount", 0) for e in other_income)
+
+    expenses = await db.expenses.find({"tenant_id": tid}, {"_id": 0}).to_list(20000)
+    expenses = [e for e in expenses if in_range(e.get("date"))]
+    exp_by_cat = {}
+    for e in expenses:
+        exp_by_cat[e["category"]] = exp_by_cat.get(e["category"], 0) + e.get("amount", 0)
+    exp_out = sum(e.get("amount", 0) for e in expenses)
+
+    # Only RECEIVED purchase orders represent real cash spent, dated by received_at.
+    purchases = await db.purchases.find({"tenant_id": tid, "status": "Diterima"}, {"_id": 0}).to_list(20000)
+    purchases = [p for p in purchases if in_range(p.get("received_at") or p.get("created_at"))]
+    purchase_out = sum(p.get("total", 0) for p in purchases)
+
+    inflow_total = sales_in + oi_in
+    outflow_total = purchase_out + exp_out
+    return {
+        "inflow": {"sales": sales_in, "other_income": oi_in, "total": inflow_total},
+        "outflow": {
+            "purchases": purchase_out, "expenses": exp_out, "total": outflow_total,
+            "expenses_by_category": [{"category": k, "amount": v} for k, v in exp_by_cat.items()],
+        },
+        "net_cash": inflow_total - outflow_total,
+        "sales_count": len(sales),
+        "purchase_count": len(purchases),
+        "expense_count": len(expenses),
+    }
+
+
 # ---------- Settings ----------
 PRINTER_FIELDS = {"print_mode", "paper_width", "printers", "active_printer"}
 

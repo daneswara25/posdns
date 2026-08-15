@@ -309,6 +309,12 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - Verified: curl profit-loss (net=692rb = gross, sebelumnya 1.054jt); screenshot PO search "kaos" → 31 hasil terfilter & terpilih.
 - Catatan akuntansi (dijelaskan ke user): pembelian/restok (PO) TIDAK langsung mengurangi laba — modal masuk sebagai HPP hanya saat barang terjual (standar akuntansi: pembelian stok = aset, bukan biaya).
 
+## Update (2026-06) — Laporan Arus Kas (Cash Flow)
+- ADDED (backend `server.py`): endpoint **`GET /reports/cash-flow`** (start/end) — Kas Masuk (penjualan + pendapatan lain) vs Kas Keluar (**pembelian/restok dari PO status "Diterima"** + pengeluaran), + `net_cash`. Pembelian dihitung dari `received_at`.
+- ADDED (`Reports.jsx`): section **"Arus Kas"** (`cash-flow-section`) di bawah Laba Rugi — kartu Kas Masuk & Kas Keluar + Arus Kas Bersih. Menegaskan pembelian/restok = uang keluar (beda dari Laba Rugi yang pakai HPP).
+- Juga diperbaiki teks penjelasan Laba Bersih di Reports agar sesuai rumus baru (termasuk HPP).
+- Verified: curl (net = masuk − keluar; 2 PO diterima = Rp157.500 sbg kas keluar) + screenshot (Arus Kas Bersih Rp896.500).
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.

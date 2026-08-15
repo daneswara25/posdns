@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { Receipt, Undo2, FileSpreadsheet, FileText, Scale, Landmark, Printer } from "lucide-react";
+import { Receipt, Undo2, FileSpreadsheet, FileText, Scale, Landmark, Printer, Wallet, ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { printReceiptSmart } from "@/lib/printer";
 import * as XLSX from "xlsx";
@@ -32,12 +32,14 @@ export default function Reports() {
   const [year, setYear] = useState(now.getFullYear());
   const [trend, setTrend] = useState([]);
   const [pl, setPl] = useState(null);
+  const [cash, setCash] = useState(null);
   const [detailSale, setDetailSale] = useState(null);
   const [settings, setSettings] = useState({});
   const [printing, setPrinting] = useState(false);
 
   const loadPL = (params) => {
     api.get("/reports/profit-loss", { params }).then((r) => setPl(r.data));
+    api.get("/reports/cash-flow", { params }).then((r) => setCash(r.data)).catch(() => {});
   };
   const load = () => {
     const params = {};
@@ -268,8 +270,37 @@ export default function Reports() {
               <span className="font-display text-base font-bold">Laba Bersih</span>
               <span className={`font-display text-xl font-bold ${pl.net_profit >= 0 ? "text-emerald-600" : "text-destructive"}`} data-testid="pl-net-profit">{rupiah(pl.net_profit)}</span>
             </div>
-            <p className="text-[11px] text-muted-foreground">Laba Bersih = Total Penjualan + Pendapatan Lain-lain − Total Pengeluaran. Referensi: Modal barang terjual (HPP) {rupiah(pl.hpp)}, Laba Kotor {rupiah(pl.gross_profit)}.</p>
+            <p className="text-[11px] text-muted-foreground">Laba Bersih = Laba Kotor (Penjualan − HPP) + Pendapatan Lain-lain − Pengeluaran. Referensi: Modal barang terjual (HPP) {rupiah(pl.hpp)}, Laba Kotor {rupiah(pl.gross_profit)}. Catatan: pembelian/restok tidak mengurangi laba di sini — lihat Arus Kas.</p>
           </div>
+        </div>
+      )}
+
+      {cash && (
+        <div className="rounded-lg border border-border bg-card p-6" data-testid="cash-flow-section">
+          <div className="mb-1 flex items-center gap-2">
+            <Wallet className="h-5 w-5 text-primary" />
+            <h3 className="font-display text-lg font-semibold">Arus Kas {start && end ? `(${start} s/d ${end})` : "(Semua Periode)"}</h3>
+          </div>
+          <p className="mb-4 text-[11px] text-muted-foreground">Uang yang benar-benar masuk vs keluar. Berbeda dari Laba Rugi — di sini <b>pembelian/restok (PO diterima)</b> dihitung sebagai uang keluar.</p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="rounded-md bg-emerald-500/5 p-3">
+              <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-600"><ArrowDownRight className="h-4 w-4" /> Kas Masuk</div>
+              <div className="flex items-center justify-between py-0.5 text-sm"><span className="text-muted-foreground">Penjualan</span><span className="text-emerald-600" data-testid="cash-in-sales">+ {rupiah(cash.inflow.sales)}</span></div>
+              <div className="flex items-center justify-between py-0.5 text-sm"><span className="text-muted-foreground">Pendapatan Lain-lain</span><span className="text-emerald-600">+ {rupiah(cash.inflow.other_income)}</span></div>
+              <div className="mt-1 flex items-center justify-between border-t border-emerald-500/20 pt-1 text-sm font-bold"><span>Total Masuk</span><span className="text-emerald-600" data-testid="cash-in-total">{rupiah(cash.inflow.total)}</span></div>
+            </div>
+            <div className="rounded-md bg-destructive/5 p-3">
+              <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-destructive"><ArrowUpRight className="h-4 w-4" /> Kas Keluar</div>
+              <div className="flex items-center justify-between py-0.5 text-sm"><span className="text-muted-foreground">Pembelian / Restok</span><span className="text-destructive" data-testid="cash-out-purchases">- {rupiah(cash.outflow.purchases)}</span></div>
+              <div className="flex items-center justify-between py-0.5 text-sm"><span className="text-muted-foreground">Pengeluaran</span><span className="text-destructive">- {rupiah(cash.outflow.expenses)}</span></div>
+              <div className="mt-1 flex items-center justify-between border-t border-destructive/20 pt-1 text-sm font-bold"><span>Total Keluar</span><span className="text-destructive" data-testid="cash-out-total">{rupiah(cash.outflow.total)}</span></div>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
+            <span className="font-display text-base font-bold">Arus Kas Bersih</span>
+            <span className={`font-display text-xl font-bold ${cash.net_cash >= 0 ? "text-emerald-600" : "text-destructive"}`} data-testid="cash-net">{rupiah(cash.net_cash)}</span>
+          </div>
+          <p className="mt-1 text-[11px] text-muted-foreground">Arus Kas Bersih = Kas Masuk − Kas Keluar. Pembelian dihitung dari PO berstatus "Diterima".</p>
         </div>
       )}
 
