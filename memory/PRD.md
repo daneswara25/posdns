@@ -336,6 +336,7 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - CHANGED (favicon): ikon tab browser diganti ke logo Daneswara (kepala emas latar hitam) — `public/favicon.png` (256), `favicon.ico` (multi), `apple-touch-icon.png` (180), `logo192/512`. Cache-bust `?v=3` di index.html.
 
 ## Backlog (Next)
+- P1: Cetak laporan berbasis rentang tanggal (bukan hanya filter teks) untuk Pengeluaran & Pendapatan Lain.
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
 - P2: Keuangan (kas masuk/keluar, rekonsiliasi), Varian & Modifier produk, multi-outlet.
