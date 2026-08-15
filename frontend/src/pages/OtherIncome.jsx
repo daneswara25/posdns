@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { NumberInput } from "@/components/NumberInput";
 import { CategoryManager } from "@/components/CategoryManager";
+import { VoucherDialog } from "@/components/VoucherDialog";
 import { toast } from "sonner";
 import { Plus, Trash2, HandCoins, Search, Tags, Printer } from "lucide-react";
 
@@ -22,6 +23,7 @@ export default function OtherIncome() {
   const [q, setQ] = useState("");
   const [manageOpen, setManageOpen] = useState(false);
   const [settings, setSettings] = useState({});
+  const [voucherTrx, setVoucherTrx] = useState(null);
 
   const loadCats = () => api.get("/other-income-categories").then((r) => setCats(r.data));
   const load = () => { api.get("/other-income").then((r) => setList(r.data)); };
@@ -168,7 +170,10 @@ export default function OtherIncome() {
                 <td className="px-4 py-3 text-muted-foreground">{e.note || "-"}</td>
                 <td className="px-4 py-3 text-right font-semibold text-emerald-600">{rupiah(e.amount)}</td>
                 <td className="px-4 py-3 text-right">
-                  <button onClick={() => del(e.id)} className="text-destructive" data-testid={`delete-other-income-${e.id}`}><Trash2 className="h-4 w-4" /></button>
+                  <div className="flex justify-end gap-3">
+                    <button onClick={() => setVoucherTrx(e)} className="text-muted-foreground hover:text-foreground" title="Cetak / Buat gambar bukti" data-testid={`print-other-income-${e.id}`}><Printer className="h-4 w-4" /></button>
+                    <button onClick={() => del(e.id)} className="text-destructive" data-testid={`delete-other-income-${e.id}`}><Trash2 className="h-4 w-4" /></button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -207,6 +212,7 @@ export default function OtherIncome() {
       </Dialog>
 
       <CategoryManager open={manageOpen} onOpenChange={setManageOpen} type="income" onChanged={loadCats} />
+      <VoucherDialog trx={voucherTrx} kind="income" settings={settings} onClose={() => setVoucherTrx(null)} />
     </div>
   );
 }

@@ -331,7 +331,13 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
   - Edit (`edit-po-*`) & Hapus (`delete-po-*`): HANYA untuk PO status "Menunggu". Backend `PUT /purchases/{pid}` & `DELETE /purchases/{pid}` menolak PO "Diterima" (400) agar stok tidak kacau. Edit memakai ulang form Buat PO (prefill supplier/item/catatan).
 - Verified: curl (description tersimpan; PUT/DELETE Menunggu OK; PUT/DELETE Diterima → 400) + screenshot (baris Menunggu tampil 4 aksi, Diterima hanya Preview, dialog Preview menampilkan detail). Data uji dibersihkan.
 
-## Update (2026-06) — Cetak Laporan Pengeluaran + Favicon baru
+## Update (2026-06) — Cetak & Buat Gambar per transaksi (Pengeluaran + Pendapatan Lain)
+- ADDED (`VoucherDialog.jsx`, `VoucherShareCard.jsx`, `lib/terbilang.js`): ikon **printer** di tiap baris Pengeluaran (`print-expense-*`) & Pendapatan Lain (`print-other-income-*`) → dialog bukti per transaksi dengan 2 aksi:
+  - **Cetak (A4)** (`voucher-print-button`): kop toko (logo + nama + alamat + telp), judul BUKTI KAS KELUAR/MASUK, No. bukti (BKK/BKM-<id8>), tanggal/jenis/keterangan, jumlah (merah keluar / hijau masuk), **terbilang**, kolom tanda tangan (Dibuat oleh / Disetujui|Diterima oleh). Auto window.print().
+  - **Buat Gambar** (`voucher-image-button`): share image html2canvas, ukuran kartu sama dgn nota penjualan (460px, charcoal+gold) tapi format bukti kas berbeda.
+- `lib/terbilang.js`: angka→kata Bahasa Indonesia (teruji: 150000→"Seratus lima puluh ribu rupiah", dst).
+- Teruji via screenshot + popup capture. Data uji dibersihkan.
+
 - ADDED (`Expenses.jsx`): tombol **Cetak** (`print-expenses-button`) di header Pengeluaran → membuka jendela cetak A4 (window.open) berisi header (logo + nama toko), periode (tanggal min–maks), waktu cetak, jumlah catatan, tabel pengeluaran (No/Tanggal/Kategori/Catatan/Nominal), Total, dan Ringkasan per Kategori. Menghormati filter pencarian aktif (mencetak baris `filtered`). Auto `window.print()`. Teruji via popup capture (2 pengeluaran → total Rp195.000 + ringkasan kategori benar). Data uji dibersihkan.
 - CHANGED (favicon): ikon tab browser diganti ke logo Daneswara (kepala emas latar hitam) — `public/favicon.png` (256), `favicon.ico` (multi), `apple-touch-icon.png` (180), `logo192/512`. Cache-bust `?v=3` di index.html.
 
