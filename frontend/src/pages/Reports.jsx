@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { Receipt, Undo2, FileSpreadsheet, FileText, Scale, Landmark, Printer, Wallet, ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { Receipt, Undo2, FileSpreadsheet, FileText, Scale, Landmark, Printer, Wallet, ArrowDownRight, ArrowUpRight, Store } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { printReceiptSmart } from "@/lib/printer";
 import * as XLSX from "xlsx";
@@ -89,15 +89,16 @@ export default function Reports() {
   };
 
   const exportExcel = () => {
-    const header = [["Invoice", "Metode", "Subtotal", "Diskon", "Pajak", "Total", "Waktu"]];
+    const header = [["Invoice", "Sumber", "Metode", "Subtotal", "Diskon", "Pajak", "Total", "Waktu"]];
     const rows = rep.sales.map((s) => [
-      s.invoice, s.payment_method, s.subtotal || 0, s.discount || 0, s.tax || 0, s.total,
+      s.invoice, s.channel || "Toko", s.payment_method, s.subtotal || 0, s.discount || 0, s.tax || 0, s.total,
       new Date(s.created_at).toLocaleString("id-ID"),
     ]);
     const summary = [[], ["Ringkasan"], ["Periode", periodLabel()], ["Total Omzet", rep.total], ["Laba Kotor", rep.profit], ["Jumlah Transaksi", rep.count]];
     const perAccount = [[], ["Ringkasan Per Rekening / Metode"], ["Rekening / Metode", "Transaksi", "Total"], ...sortMethods(rep.by_method).map((m) => [m.method, m.count, m.total])];
-    const ws = XLSX.utils.aoa_to_sheet([...header, ...rows, ...summary, ...perAccount]);
-    ws["!cols"] = [{ wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 22 }];
+    const perChannel = [[], ["Ringkasan Per Sumber Penjualan"], ["Sumber", "Transaksi", "Omzet", "Laba Kotor"], ...(rep.by_channel || []).map((c) => [c.channel, c.count, c.total, c.profit])];
+    const ws = XLSX.utils.aoa_to_sheet([...header, ...rows, ...summary, ...perAccount, ...perChannel]);
+    ws["!cols"] = [{ wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 22 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Laporan Penjualan");
     XLSX.writeFile(wb, `Laporan-Penjualan-${start || "semua"}.xlsx`);
@@ -218,6 +219,45 @@ export default function Reports() {
                   <td className="py-2 font-semibold">Total Transfer Bank</td>
                   <td className="py-2 text-right text-muted-foreground" data-testid="account-bank-count">{rep.by_method.filter((m) => BANK_METHODS.includes(m.method)).reduce((a, m) => a + m.count, 0)}x</td>
                   <td className="py-2 text-right font-bold text-primary" data-testid="account-bank-total">{rupiah(rep.by_method.filter((m) => BANK_METHODS.includes(m.method)).reduce((a, m) => a + m.total, 0))}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-border bg-card p-6" data-testid="channel-summary-section">
+        <div className="mb-4 flex items-center gap-2">
+          <Store className="h-5 w-5 text-primary" />
+          <h3 className="font-display text-lg font-semibold">Ringkasan Per Sumber Penjualan</h3>
+        </div>
+        {!rep.by_channel || rep.by_channel.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Belum ada transaksi pada periode ini.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[480px] text-sm">
+              <thead className="text-xs uppercase text-muted-foreground">
+                <tr className="border-b border-border">
+                  <th className="py-2 text-left font-medium">Sumber</th>
+                  <th className="py-2 text-right font-medium">Transaksi</th>
+                  <th className="py-2 text-right font-medium">Omzet</th>
+                  <th className="py-2 text-right font-medium">Laba Kotor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rep.by_channel.map((c) => (
+                  <tr key={c.channel} className="border-b border-border/60" data-testid={`channel-row-${c.channel}`}>
+                    <td className="py-2"><span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-semibold">{c.channel}</span></td>
+                    <td className="py-2 text-right text-muted-foreground">{c.count}x</td>
+                    <td className="py-2 text-right font-semibold">{rupiah(c.total)}</td>
+                    <td className="py-2 text-right font-semibold text-emerald-600">{rupiah(c.profit)}</td>
+                  </tr>
+                ))}
+                <tr className="border-t-2 border-border bg-secondary/30">
+                  <td className="py-2 font-semibold">Total</td>
+                  <td className="py-2 text-right text-muted-foreground">{rep.by_channel.reduce((a, c) => a + c.count, 0)}x</td>
+                  <td className="py-2 text-right font-bold text-primary">{rupiah(rep.by_channel.reduce((a, c) => a + c.total, 0))}</td>
+                  <td className="py-2 text-right font-bold text-emerald-600">{rupiah(rep.by_channel.reduce((a, c) => a + c.profit, 0))}</td>
                 </tr>
               </tbody>
             </table>
@@ -411,6 +451,7 @@ export default function Reports() {
               <div className="grid grid-cols-2 gap-2 rounded-md bg-secondary/40 p-3 text-xs">
                 <div><span className="text-muted-foreground">Kasir</span><p className="font-medium">{detailSale.cashier || "-"}</p></div>
                 <div><span className="text-muted-foreground">Metode</span><p className="font-medium">{detailSale.payment_method}</p></div>
+                <div><span className="text-muted-foreground">Sumber</span><p className="font-medium">{detailSale.channel || "Toko"}</p></div>
                 <div><span className="text-muted-foreground">Pelanggan</span><p className="font-medium">{detailSale.customer_name || "Umum"}</p></div>
                 <div><span className="text-muted-foreground">No. HP</span><p className="font-medium">{detailSale.customer_phone || "-"}</p></div>
               </div>

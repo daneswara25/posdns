@@ -331,7 +331,13 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
   - Edit (`edit-po-*`) & Hapus (`delete-po-*`): HANYA untuk PO status "Menunggu". Backend `PUT /purchases/{pid}` & `DELETE /purchases/{pid}` menolak PO "Diterima" (400) agar stok tidak kacau. Edit memakai ulang form Buat PO (prefill supplier/item/catatan).
 - Verified: curl (description tersimpan; PUT/DELETE Menunggu OK; PUT/DELETE Diterima → 400) + screenshot (baris Menunggu tampil 4 aksi, Diterima hanya Preview, dialog Preview menampilkan detail). Data uji dibersihkan.
 
-## Update (2026-06) — Cetak & Buat Gambar per transaksi (Pengeluaran + Pendapatan Lain)
+## Update (2026-06) — Sumber Penjualan (Channel: Toko/Shopee/Tokopedia/dll)
+- ADDED (`POS.jsx`): pemilih **Sumber Penjualan** (Toko, Shopee, Tokopedia, WhatsApp, Lainnya) di dialog Pembayaran, Deposit, & Tahan/Draft. Field `channel` dikirim ke API dan disimpan di dokumen sale/order. Default "Toko".
+- Backend (`server.py`): `SaleInput.channel` + `CustomOrderInput.channel`; sale doc & settlement sale menyimpan `channel`; `GET /reports/sales` kini mengembalikan `by_channel` (total, profit, count per channel). Transaksi lama otomatis dianggap "Toko".
+- Reports (`Reports.jsx`): section **Ringkasan Per Sumber Penjualan** (Omzet & Laba Kotor per channel), kolom Sumber di detail transaksi, dan kolom/ringkasan channel di ekspor Excel.
+- Teruji: curl (channel tersimpan; by_channel Shopee/Tokopedia/Toko benar) + screenshot (picker di dialog pembayaran, section laporan). Data uji dibersihkan (+restore stok).
+
+
 - ADDED (`VoucherDialog.jsx`, `VoucherShareCard.jsx`, `lib/terbilang.js`): ikon **printer** di tiap baris Pengeluaran (`print-expense-*`) & Pendapatan Lain (`print-other-income-*`) → dialog bukti per transaksi dengan 2 aksi:
   - **Cetak (A4)** (`voucher-print-button`): kop toko (logo + nama + alamat + telp), judul BUKTI KAS KELUAR/MASUK, No. bukti (BKK/BKM-<id8>), tanggal/jenis/keterangan, jumlah (merah keluar / hijau masuk), **terbilang**, kolom tanda tangan (Dibuat oleh / Disetujui|Diterima oleh). Auto window.print().
   - **Buat Gambar** (`voucher-image-button`): share image html2canvas, ukuran kartu sama dgn nota penjualan (460px, charcoal+gold) tapi format bukti kas berbeda.

@@ -165,6 +165,7 @@ class SaleInput(BaseModel):
     customer_name: Optional[str] = ""
     customer_id: Optional[str] = None
     order_id: Optional[str] = None
+    channel: Optional[str] = "Toko"
 
 
 class StockInput(BaseModel):
@@ -232,6 +233,7 @@ class CustomOrderInput(BaseModel):
     deposit_method: Literal["Tunai", "BCA TOKO", "BRI TOKO", "BCA ADMIN (ELIS)", "QRIS", "E-Wallet"] = "Tunai"
     order_type: str = "Reguler"
     note: Optional[str] = ""
+    channel: Optional[str] = "Toko"
 
 
 class OrderDepositInput(BaseModel):
@@ -490,6 +492,7 @@ async def create_sale(data: SaleInput, user: dict = Depends(get_current_user)):
         "payment_method": data.payment_method, "paid_amount": data.paid_amount,
         "change": max(0, data.paid_amount - total), "customer_name": cust_name,
         "customer_id": data.customer_id, "customer_phone": cust_phone,
+        "channel": (data.channel or "Toko").strip() or "Toko",
         "cashier": user.get("name", ""), "cashier_id": user["id"], "created_at": now_iso(),
     }
     await db.sales.insert_one(doc)
@@ -568,14 +571,21 @@ async def report_sales(user: dict = Depends(require_roles("Owner", "Manager")),
     total = sum(s["total"] for s in sales)
     profit = sum(s.get("profit", 0) for s in sales)
     by_method = {}
+    by_channel = {}
     for s in sales:
         m = s["payment_method"]
         e = by_method.setdefault(m, {"total": 0, "count": 0})
         e["total"] += s["total"]
         e["count"] += 1
+        ch = s.get("channel") or "Toko"
+        ce = by_channel.setdefault(ch, {"total": 0, "profit": 0, "count": 0})
+        ce["total"] += s["total"]
+        ce["profit"] += s.get("profit", 0)
+        ce["count"] += 1
     return {
         "count": len(sales), "total": total, "profit": profit,
         "by_method": [{"method": k, "total": v["total"], "count": v["count"]} for k, v in by_method.items()],
+        "by_channel": sorted([{"channel": k, "total": v["total"], "profit": v["profit"], "count": v["count"]} for k, v in by_channel.items()], key=lambda x: -x["total"]),
         "sales": sales,
     }
 
@@ -1225,6 +1235,7 @@ async def create_order(data: CustomOrderInput, user: dict = Depends(get_current_
         "deposit_amount": data.deposit_amount, "deposit_method": data.deposit_method,
         "remaining": max(0, total - data.deposit_amount), "note": data.note,
         "order_type": data.order_type or "Reguler",
+        "channel": (data.channel or "Toko").strip() or "Toko",
         "status": "Draft" if is_draft else "Proses", "cashier": user.get("name", ""), "created_at": now_iso(),
     }
     await db.orders.insert_one(doc)
@@ -1293,6 +1304,7 @@ async def complete_order(oid: str, data: SettleOrderInput, user: dict = Depends(
         "change": max(0, (data.paid_amount + order["deposit_amount"]) - order["total"]),
         "customer_name": order["customer_name"], "customer_id": order.get("customer_id"),
         "from_order": order["order_number"],
+        "channel": order.get("channel", "Toko"),
         "cashier": user.get("name", ""), "cashier_id": user["id"], "created_at": now_iso(),
     }
     await db.sales.insert_one(sale)

@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { Search, Plus, Minus, Trash2, X, ArrowLeft, ShoppingCart, ScanLine, CheckCircle2, PauseCircle, PlayCircle, HandCoins, Copy, MessageCircle, UserPlus, Check, ChevronsUpDown, Grid2x2, Grid3x3, LayoutGrid, Pencil } from "lucide-react";
 
 const METHODS = ["Tunai", "Bank Transfer", "QRIS", "E-Wallet"];
+const CHANNELS = ["Toko", "Shopee", "Tokopedia", "WhatsApp", "Lainnya"];
 const BANKS = ["BCA TOKO", "BRI TOKO", "BCA ADMIN (ELIS)"];
 const ORDER_TYPES = ["Reguler", "Express", "Custom", "Lainnya"];
 const isBank = (m) => BANKS.includes(m);
@@ -74,6 +75,7 @@ export default function POS() {
   const [taxRate, setTaxRate] = useState(0);
   const [payOpen, setPayOpen] = useState(false);
   const [method, setMethod] = useState("Tunai");
+  const [channel, setChannel] = useState("Toko");
   const [paid, setPaid] = useState("");
   const [receipt, setReceipt] = useState(null);
   const [waPhone, setWaPhone] = useState("");
@@ -134,11 +136,11 @@ export default function POS() {
         customer_id: customerId || null,
         customer_name: holdName || "",
         items: cart, discount: Number(discount) || 0, tax_rate: taxRate,
-        deposit_amount: 0, order_type: holdType,
+        deposit_amount: 0, order_type: holdType, channel,
       });
       toast.success("Draft pesanan disimpan di menu Pesanan");
       setHoldOpen(false); setHoldName(""); setHoldType("Reguler");
-      setCart([]); setDiscount(0); setCustomerId(""); setCartOpen(false);
+      setCart([]); setDiscount(0); setCustomerId(""); setCartOpen(false); setChannel("Toko");
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
     finally { setHoldBusy(false); }
   };
@@ -148,10 +150,10 @@ export default function POS() {
       const { data } = await api.post("/orders", {
         customer_id: customerId || null, items: cart,
         discount: Number(discount) || 0, tax_rate: taxRate,
-        deposit_amount: Number(depositAmt) || 0, deposit_method: method,
+        deposit_amount: Number(depositAmt) || 0, deposit_method: method, channel,
       });
       toast.success("Pesanan + deposit tersimpan");
-      setDepositOpen(false); setDepositAmt(""); setCart([]); setDiscount(0); setCustomerId(""); setCartOpen(false);
+      setDepositOpen(false); setDepositAmt(""); setCart([]); setDiscount(0); setCustomerId(""); setCartOpen(false); setChannel("Toko");
       setNota(data);
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
@@ -286,6 +288,21 @@ export default function POS() {
     if (m === "Bank Transfer") { setMethod(BANKS[0]); setPaid(total); }
     else { setMethod(m); setPaid(m === "Tunai" ? "" : total); }
   };
+  const renderChannelPicker = (prefix) => (
+    <div className="mt-2 flex flex-wrap gap-2" data-testid={`${prefix}-channel-picker`}>
+      {CHANNELS.map((c) => (
+        <button
+          key={c}
+          type="button"
+          onClick={() => setChannel(c)}
+          className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors duration-200 ${channel === c ? "border-primary bg-accent text-accent-foreground" : "border-border text-muted-foreground"}`}
+          data-testid={`${prefix}-channel-${c}`}
+        >
+          {c}
+        </button>
+      ))}
+    </div>
+  );
   const renderMethodPicker = (prefix) => (
     <div className="mt-2 space-y-2">
       <div className="grid grid-cols-2 gap-2">
@@ -331,12 +348,14 @@ export default function POS() {
         payment_method: method,
         paid_amount: method === "Tunai" ? Number(paid) : total,
         customer_id: customerId || null,
+        channel,
       });
       setPayOpen(false);
       setCart([]);
       setDiscount(0);
       setPaid("");
       setCustomerId("");
+      setChannel("Toko");
       setCartOpen(false);
       load();
       toast.success("Transaksi berhasil");
@@ -787,6 +806,10 @@ export default function POS() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
+              <Label className="text-xs uppercase tracking-widest text-muted-foreground">Sumber Penjualan</Label>
+              {renderChannelPicker("pay")}
+            </div>
+            <div>
               <Label className="text-xs uppercase tracking-widest text-muted-foreground">Metode Pembayaran</Label>
               {renderMethodPicker("pay")}
             </div>
@@ -821,6 +844,10 @@ export default function POS() {
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">Simpan pesanan dengan uang muka. Sisa dilunasi saat pesanan selesai (menu Pesanan).</p>
             <div>
+              <Label className="text-xs uppercase tracking-widest text-muted-foreground">Sumber Penjualan</Label>
+              {renderChannelPicker("deposit")}
+            </div>
+            <div>
               <Label className="text-xs uppercase tracking-widest text-muted-foreground">Metode Deposit</Label>
               {renderMethodPicker("deposit")}
             </div>
@@ -852,6 +879,10 @@ export default function POS() {
                   {ORDER_TYPES.map((t) => <SelectItem key={t} value={t} data-testid={`hold-type-${t}`}>{t}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Sumber Penjualan</Label>
+              {renderChannelPicker("hold")}
             </div>
           </div>
           <DialogFooter>
