@@ -321,6 +321,9 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 - Field entri diberi penanda wajib (Kategori*, Nominal*, Tanggal*) agar Laba Rugi tetap lancar. Menambah kategori TIDAK mengganggu Laba Rugi (laporan mengelompokkan berdasarkan nama kategori).
 - Verified: curl (tambah kategori → muncul di list & masuk P&L; duplikat 400; hapus) + screenshot UI (tambah "Sewa Tempat UI", default terkunci).
 
+## Update (2026-06) — Label keterangan sumber angka Omzet & Laba Kotor
+- ADDED (`Reports.jsx`): keterangan kecil di bawah kartu **Total Omzet** (nilai penjualan harga jual × qty, transaksi lunas, sebelum dikurangi modal/biaya) dan **Laba Kotor** (Omzet − HPP; belum termasuk pengeluaran & pendapatan lain). Verified via screenshot.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.

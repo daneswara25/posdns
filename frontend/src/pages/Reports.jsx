@@ -176,8 +176,8 @@ export default function Reports() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border border-border bg-card p-5"><p className="text-xs uppercase tracking-widest text-muted-foreground">Total Omzet</p><p className="mt-2 font-display text-2xl font-bold">{rupiah(rep.total)}</p></div>
-        <div className="rounded-lg border border-border bg-card p-5"><p className="text-xs uppercase tracking-widest text-muted-foreground">Laba Kotor</p><p className="mt-2 font-display text-2xl font-bold text-emerald-600">{rupiah(rep.profit)}</p></div>
+        <div className="rounded-lg border border-border bg-card p-5"><p className="text-xs uppercase tracking-widest text-muted-foreground">Total Omzet</p><p className="mt-2 font-display text-2xl font-bold">{rupiah(rep.total)}</p><p className="mt-1.5 text-[11px] leading-snug text-muted-foreground" data-testid="omzet-note">Total nilai penjualan (harga jual × qty) dari semua transaksi lunas pada periode ini. Belum dikurangi modal/biaya apa pun.</p></div>
+        <div className="rounded-lg border border-border bg-card p-5"><p className="text-xs uppercase tracking-widest text-muted-foreground">Laba Kotor</p><p className="mt-2 font-display text-2xl font-bold text-emerald-600">{rupiah(rep.profit)}</p><p className="mt-1.5 text-[11px] leading-snug text-muted-foreground" data-testid="laba-kotor-note">Omzet − HPP (modal barang terjual = harga modal × qty). Belum termasuk pengeluaran operasional & pendapatan lain-lain.</p></div>
         <div className="rounded-lg border border-border bg-card p-5"><p className="text-xs uppercase tracking-widest text-muted-foreground">Jumlah Transaksi</p><p className="mt-2 font-display text-2xl font-bold">{rep.count}</p></div>
       </div>
 
