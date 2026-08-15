@@ -142,7 +142,7 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
 ## Update (2026-06) — Default stok produk = 0 + link posdns
 - CHANGED: `Products.jsx` `EMPTY.stock` dari "" → 0 sehingga form Tambah Produk menampilkan Stok 0 secara eksplisit (produk baru mulai dari stok 0). Verified via screenshot: field Stok = "0".
 - Preview DB: semua 300 produk stok = 0 (reset-stock idempotent). Produksi: jalankan tombol "Reset Semua Stok = 0" (Pengaturan → Katalog & Stok) setelah redeploy karena DB terpisah.
-- posdns.html link: Produksi https://pos-retail-platform.emergent.host/posdns.html ; Preview https://daneswara-retail.preview.emergentagent.com/posdns.html. SYSTEM_URL di file = produksi.
+- posdns.html link: Produksi https://pos-retail-platform.emergent.host/posdns.html ; Preview https://kasir-dashboard-4.preview.emergentagent.com/posdns.html. SYSTEM_URL di file = produksi.
 
 ## Update (2026-06) — Ikon produk mewarisi thumbnail kategori
 - CHANGED (`Products.jsx`): produk tanpa gambar sendiri kini menampilkan **thumbnail kategorinya** (fallback: `p.image || catThumb(p.category_id)`), baru fallback ke ikon `Package` bila kategori juga tak bergambar. Helper baru `catThumb(id)`. Berlaku di tampilan List & Kartu (Besar/Kecil).
