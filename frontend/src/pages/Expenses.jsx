@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { NumberInput } from "@/components/NumberInput";
 import { CategoryManager } from "@/components/CategoryManager";
 import { toast } from "sonner";
-import { Plus, Trash2, Wallet, Receipt, Search, Tags } from "lucide-react";
+import { Plus, Trash2, Wallet, Receipt, Search, Tags, Printer } from "lucide-react";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const EMPTY = { category: "", amount: "", note: "", date: today() };
@@ -21,12 +21,14 @@ export default function Expenses() {
   const [saving, setSaving] = useState(false);
   const [q, setQ] = useState("");
   const [manageOpen, setManageOpen] = useState(false);
+  const [settings, setSettings] = useState({});
 
   const loadCats = () => api.get("/expense-categories").then((r) => setCats(r.data));
   const load = () => { api.get("/expenses").then((r) => setList(r.data)); };
   useEffect(() => {
     load();
     loadCats();
+    api.get("/settings").then((r) => setSettings(r.data)).catch(() => {});
   }, []);
 
   const term = q.trim().toLowerCase();
@@ -54,6 +56,64 @@ export default function Expenses() {
     load();
   };
 
+  const printReport = () => {
+    const rows = [...filtered].sort((a, b) => (a.date < b.date ? 1 : -1));
+    if (rows.length === 0) return toast.error("Tidak ada data untuk dicetak");
+    const fmt = (n) => "Rp" + Number(n || 0).toLocaleString("id-ID");
+    const byCat = {};
+    rows.forEach((e) => { byCat[e.category] = (byCat[e.category] || 0) + e.amount; });
+    const dates = rows.map((r) => r.date).sort();
+    const periode = dates.length ? (dates[0] === dates[dates.length - 1] ? dates[0] : `${dates[0]} s/d ${dates[dates.length - 1]}`) : "-";
+    const biz = settings.business_name || "Daneswara POS";
+    const logo = settings.logo || "/logo.png";
+    const now = new Date().toLocaleString("id-ID");
+    const rowsHtml = rows.map((e, i) => `
+      <tr>
+        <td style="text-align:center">${i + 1}</td>
+        <td>${e.date}</td>
+        <td>${e.category}</td>
+        <td>${(e.note || "-").replace(/</g, "&lt;")}</td>
+        <td style="text-align:right">${fmt(e.amount)}</td>
+      </tr>`).join("");
+    const catHtml = Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([c, v]) => `
+      <tr><td>${c}</td><td style="text-align:right">${fmt(v)}</td></tr>`).join("");
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Laporan Pengeluaran</title>
+      <style>
+        *{font-family:Arial,Helvetica,sans-serif;box-sizing:border-box}
+        body{margin:24px;color:#15171c}
+        .head{display:flex;align-items:center;gap:14px;border-bottom:2px solid #15171c;padding-bottom:12px;margin-bottom:16px}
+        .head img{width:56px;height:56px;object-fit:contain}
+        .head h1{margin:0;font-size:20px}
+        .head p{margin:2px 0 0;font-size:12px;color:#555}
+        h2{font-size:15px;margin:18px 0 8px}
+        table{width:100%;border-collapse:collapse;font-size:12px}
+        th,td{border:1px solid #ccc;padding:6px 8px}
+        th{background:#f2f2f2;text-align:left}
+        .total{font-size:15px;font-weight:bold;text-align:right;margin-top:8px}
+        .sum{width:60%;margin-top:6px}
+        .meta{font-size:12px;color:#555;margin-bottom:10px}
+        @media print{body{margin:12mm}}
+      </style></head><body>
+      <div class="head">
+        <img src="${logo}" onerror="this.style.display='none'"/>
+        <div><h1>${biz}</h1><p>Laporan Pengeluaran</p></div>
+      </div>
+      <div class="meta">Periode: <b>${periode}</b> &nbsp;·&nbsp; Dicetak: ${now} &nbsp;·&nbsp; Jumlah catatan: ${rows.length}${term ? ` &nbsp;·&nbsp; Filter: "${term}"` : ""}</div>
+      <table>
+        <thead><tr><th style="width:32px;text-align:center">No</th><th style="width:90px">Tanggal</th><th>Kategori</th><th>Catatan</th><th style="width:120px;text-align:right">Nominal</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      <div class="total">Total Pengeluaran: ${fmt(total)}</div>
+      <h2>Ringkasan per Kategori</h2>
+      <table class="sum"><thead><tr><th>Kategori</th><th style="text-align:right;width:140px">Total</th></tr></thead><tbody>${catHtml}
+        <tr><td style="font-weight:bold">TOTAL</td><td style="text-align:right;font-weight:bold">${fmt(total)}</td></tr></tbody></table>
+      <script>window.onload=function(){setTimeout(function(){window.print();},300);}</script>
+      </body></html>`;
+    const w = window.open("", "_blank");
+    if (!w) return toast.error("Popup diblokir browser. Izinkan popup untuk mencetak.");
+    w.document.open(); w.document.write(html); w.document.close();
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -62,6 +122,9 @@ export default function Expenses() {
           <h1 className="font-display text-3xl font-bold tracking-tight">Pengeluaran</h1>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={printReport} className="gap-2" data-testid="print-expenses-button">
+            <Printer className="h-4 w-4" /> Cetak
+          </Button>
           <Button variant="outline" onClick={() => setManageOpen(true)} className="gap-2" data-testid="manage-expense-categories-button">
             <Tags className="h-4 w-4" /> Kelola Jenis
           </Button>

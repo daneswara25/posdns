@@ -331,6 +331,10 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
   - Edit (`edit-po-*`) & Hapus (`delete-po-*`): HANYA untuk PO status "Menunggu". Backend `PUT /purchases/{pid}` & `DELETE /purchases/{pid}` menolak PO "Diterima" (400) agar stok tidak kacau. Edit memakai ulang form Buat PO (prefill supplier/item/catatan).
 - Verified: curl (description tersimpan; PUT/DELETE Menunggu OK; PUT/DELETE Diterima → 400) + screenshot (baris Menunggu tampil 4 aksi, Diterima hanya Preview, dialog Preview menampilkan detail). Data uji dibersihkan.
 
+## Update (2026-06) — Cetak Laporan Pengeluaran + Favicon baru
+- ADDED (`Expenses.jsx`): tombol **Cetak** (`print-expenses-button`) di header Pengeluaran → membuka jendela cetak A4 (window.open) berisi header (logo + nama toko), periode (tanggal min–maks), waktu cetak, jumlah catatan, tabel pengeluaran (No/Tanggal/Kategori/Catatan/Nominal), Total, dan Ringkasan per Kategori. Menghormati filter pencarian aktif (mencetak baris `filtered`). Auto `window.print()`. Teruji via popup capture (2 pengeluaran → total Rp195.000 + ringkasan kategori benar). Data uji dibersihkan.
+- CHANGED (favicon): ikon tab browser diganti ke logo Daneswara (kepala emas latar hitam) — `public/favicon.png` (256), `favicon.ico` (multi), `apple-touch-icon.png` (180), `logo192/512`. Cache-bust `?v=3` di index.html.
+
 ## Backlog (Next)
 - P1: Split Bill, Hold Order, Barcode scanner hardware, cetak thermal ESC/POS asli.
 - P1: Customer/Membership + Poin Loyalitas, Pembelian/Purchase Order + Supplier.
