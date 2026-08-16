@@ -331,7 +331,13 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
   - Edit (`edit-po-*`) & Hapus (`delete-po-*`): HANYA untuk PO status "Menunggu". Backend `PUT /purchases/{pid}` & `DELETE /purchases/{pid}` menolak PO "Diterima" (400) agar stok tidak kacau. Edit memakai ulang form Buat PO (prefill supplier/item/catatan).
 - Verified: curl (description tersimpan; PUT/DELETE Menunggu OK; PUT/DELETE Diterima → 400) + screenshot (baris Menunggu tampil 4 aksi, Diterima hanya Preview, dialog Preview menampilkan detail). Data uji dibersihkan.
 
-## Update (2026-06) — Tanda "Sudah PO" pada Produk stok minus (hindari double PO)
+## Update (2026-06) — Supplier WAJIB untuk semua PO
+- CHANGED backend (`server.py`): helper `resolve_supplier` memvalidasi supplier (tidak boleh kosong / tidak ada / nama '-'). Diterapkan di `POST /purchases`, `PUT /purchases/{pid}`, `POST /purchases/from-order/{oid}`, `POST /purchases/from-product/{pid}`. Dua endpoint auto kini menerima body `{supplier_id}` (model `SupplierRef`). Tanpa supplier → 400.
+- ADDED (`SupplierPickerDialog.jsx`): dialog pilih supplier (wajib) dipakai di Orders & Products sebelum membuat PO otomatis. Kalau belum ada supplier → arahkan tambah di menu Supplier.
+- CHANGED (`Purchases.jsx`): form PO manual — label "Supplier *" + validasi wajib sebelum simpan.
+- Teruji: curl (manual/from-order/from-product tanpa supplier → 400; from-product dgn supplier → 200 + supplier_name terisi) + screenshot (picker muncul, tombol Buat PO nonaktif sampai supplier dipilih). Data uji dibersihkan.
+
+
 - ADDED backend (`list_products`): setiap produk kini punya `open_po` (bool) & `open_po_numbers` — dihitung dinamis dari PO status "Menunggu" yang memuat produk itu (hilang otomatis setelah PO diterima/dihapus).
 - ADDED (`Products.jsx`): tombol PO di produk stok minus berubah jadi biru **"Sudah PO"** bila sudah ada PO restok terbuka; klik lagi → konfirmasi peringatan double PO. Reload otomatis setelah buat PO.
 - Teruji: curl (open_po False→True dgn nomor PO→False setelah PO dihapus) + screenshot (BANNER "Sudah PO" biru vs GILDAN "PO" oranye). Data uji dibersihkan.

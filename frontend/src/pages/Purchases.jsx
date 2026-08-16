@@ -57,6 +57,7 @@ export default function Purchases() {
   const save = async () => {
     const valid = items.filter((i) => i.product_id && i.qty > 0);
     if (valid.length === 0) return toast.error("Tambahkan minimal 1 item");
+    if (!supplierId) return toast.error("Supplier wajib dipilih");
     const payload = {
       supplier_id: supplierId || null,
       supplier_name: suppliers.find((s) => s.id === supplierId)?.name || "",
@@ -134,7 +135,7 @@ export default function Purchases() {
           <DialogHeader><DialogTitle className="font-display">{editId ? "Edit Purchase Order" : "Buat Purchase Order"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1">
-              <Label>Supplier</Label>
+              <Label>Supplier <span className="text-destructive">*</span></Label>
               <Select value={supplierId} onValueChange={setSupplierId}>
                 <SelectTrigger data-testid="po-supplier-select"><SelectValue placeholder="Pilih supplier" /></SelectTrigger>
                 <SelectContent>{suppliers.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>

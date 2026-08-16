@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { NumberInput } from "@/components/NumberInput";
 import { ViewToggle, useViewMode } from "@/components/ViewToggle";
+import { SupplierPickerDialog } from "@/components/SupplierPickerDialog";
 import { Plus, Pencil, Trash2, Search, Package, ListOrdered, ChevronUp, ChevronDown, PackagePlus, PackageCheck } from "lucide-react";
 
 const EMPTY = { name: "", sku: "", barcode: "", category_id: "", price: "", cost: "", stock: 0, min_stock: 5, unit: "pcs", image: "", description: "", active: true };
@@ -27,6 +28,7 @@ export default function Products() {
   const [sortBy, setSortBy] = useState("name");
   const [catFilter, setCatFilter] = useState("all");
   const [view, setView] = useViewMode("view-products", "list");
+  const [poProduct, setPoProduct] = useState(null);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [editId, setEditId] = useState(null);
@@ -131,12 +133,14 @@ export default function Products() {
     if (p.open_po) {
       const ok = window.confirm(`Produk "${p.name}" SUDAH punya PO restok yang belum diterima (${(p.open_po_numbers || []).join(", ")}).\n\nYakin buat PO lagi? Ini bisa menyebabkan pembelian dobel.`);
       if (!ok) return;
-    } else if (!window.confirm(`Buat PO restok untuk "${p.name}"? PO akan muncul di menu Pembelian.`)) {
-      return;
     }
+    setPoProduct(p);
+  };
+  const confirmPO = async (supplierId) => {
     try {
-      const { data } = await api.post(`/purchases/from-product/${p.id}`);
+      const { data } = await api.post(`/purchases/from-product/${poProduct.id}`, { supplier_id: supplierId });
       toast.success(`PO ${data.po_number} dibuat — cek di menu Pembelian`);
+      setPoProduct(null);
       load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
@@ -355,6 +359,13 @@ export default function Products() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <SupplierPickerDialog
+        open={!!poProduct}
+        onOpenChange={(o) => { if (!o) setPoProduct(null); }}
+        onConfirm={confirmPO}
+        title="Pilih Supplier untuk PO Restok"
+        description={poProduct ? `PO restok untuk "${poProduct.name}". Supplier wajib dipilih.` : ""}
+      />
     </div>
   );
 }

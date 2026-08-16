@@ -217,6 +217,10 @@ class PurchaseOrderInput(BaseModel):
     note: Optional[str] = ""
 
 
+class SupplierRef(BaseModel):
+    supplier_id: Optional[str] = None
+
+
 class HeldOrderInput(BaseModel):
     label: str
     items: List[SaleItem]
@@ -1121,6 +1125,18 @@ async def delete_supplier(sid: str, user: dict = Depends(require_roles("Owner", 
 
 
 # ---------- Purchase Orders ----------
+async def resolve_supplier(supplier_id, user):
+    if not supplier_id:
+        raise HTTPException(status_code=400, detail="Supplier wajib dipilih")
+    sup = await db.suppliers.find_one({"id": supplier_id, "tenant_id": user["tenant_id"]})
+    if not sup:
+        raise HTTPException(status_code=400, detail="Supplier tidak ditemukan")
+    name = (sup.get("name") or "").strip()
+    if not name or name == "-":
+        raise HTTPException(status_code=400, detail="Nama supplier tidak valid (tidak boleh kosong atau '-')")
+    return supplier_id, name
+
+
 @api_router.get("/purchases")
 async def list_purchases(user: dict = Depends(require_roles("Owner", "Manager", "Gudang"))):
     return await db.purchases.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).sort("created_at", -1).to_list(1000)
@@ -1130,11 +1146,12 @@ async def list_purchases(user: dict = Depends(require_roles("Owner", "Manager", 
 async def create_purchase(data: PurchaseOrderInput, user: dict = Depends(require_roles("Owner", "Manager", "Gudang"))):
     if not data.items:
         raise HTTPException(status_code=400, detail="Item pembelian kosong")
+    supplier_id, supplier_name = await resolve_supplier(data.supplier_id, user)
     total = sum(i.qty * i.cost for i in data.items)
     count = await db.purchases.count_documents({"tenant_id": user["tenant_id"]})
     doc = {
         "id": new_id(), "tenant_id": user["tenant_id"], "po_number": f"PO-{datetime.now().strftime('%y%m%d')}-{count + 1:04d}",
-        "supplier_id": data.supplier_id, "supplier_name": data.supplier_name,
+        "supplier_id": supplier_id, "supplier_name": supplier_name,
         "items": [i.model_dump() for i in data.items], "total": total, "note": data.note,
         "customer_name": "",
         "status": "Menunggu", "cashier": user.get("name", ""), "created_at": now_iso(),
@@ -1145,12 +1162,13 @@ async def create_purchase(data: PurchaseOrderInput, user: dict = Depends(require
 
 
 @api_router.post("/purchases/from-order/{oid}")
-async def create_purchase_from_order(oid: str, user: dict = Depends(require_roles("Owner", "Manager", "Gudang"))):
+async def create_purchase_from_order(oid: str, ref: SupplierRef, user: dict = Depends(require_roles("Owner", "Manager", "Gudang"))):
     order = await db.orders.find_one({"id": oid, "tenant_id": user["tenant_id"]})
     if not order:
         raise HTTPException(status_code=404, detail="Pesanan tidak ditemukan")
     if not order.get("items"):
         raise HTTPException(status_code=400, detail="Pesanan tidak memiliki item")
+    supplier_id, supplier_name = await resolve_supplier(ref.supplier_id, user)
     items = []
     for it in order["items"]:
         prod = await db.products.find_one({"id": it["product_id"], "tenant_id": user["tenant_id"]})
@@ -1160,7 +1178,7 @@ async def create_purchase_from_order(oid: str, user: dict = Depends(require_role
     count = await db.purchases.count_documents({"tenant_id": user["tenant_id"]})
     doc = {
         "id": new_id(), "tenant_id": user["tenant_id"], "po_number": f"PO-{datetime.now().strftime('%y%m%d')}-{count + 1:04d}",
-        "supplier_id": None, "supplier_name": "",
+        "supplier_id": supplier_id, "supplier_name": supplier_name,
         "items": items, "total": total, "note": f"Dari pesanan {order['order_number']}",
         "customer_name": order.get("customer_name", ""),
         "order_id": oid, "order_number": order["order_number"],
@@ -1172,10 +1190,11 @@ async def create_purchase_from_order(oid: str, user: dict = Depends(require_role
 
 
 @api_router.post("/purchases/from-product/{pid}")
-async def create_purchase_from_product(pid: str, user: dict = Depends(require_roles("Owner", "Manager", "Gudang"))):
+async def create_purchase_from_product(pid: str, ref: SupplierRef, user: dict = Depends(require_roles("Owner", "Manager", "Gudang"))):
     prod = await db.products.find_one({"id": pid, "tenant_id": user["tenant_id"]})
     if not prod:
         raise HTTPException(status_code=404, detail="Produk tidak ditemukan")
+    supplier_id, supplier_name = await resolve_supplier(ref.supplier_id, user)
     stock = prod.get("stock", 0)
     qty = -stock if stock < 0 else 1
     cost = prod.get("cost", 0)
@@ -1184,7 +1203,7 @@ async def create_purchase_from_product(pid: str, user: dict = Depends(require_ro
     count = await db.purchases.count_documents({"tenant_id": user["tenant_id"]})
     doc = {
         "id": new_id(), "tenant_id": user["tenant_id"], "po_number": f"PO-{datetime.now().strftime('%y%m%d')}-{count + 1:04d}",
-        "supplier_id": None, "supplier_name": "",
+        "supplier_id": supplier_id, "supplier_name": supplier_name,
         "items": items, "total": total, "note": "Restok stok minus",
         "customer_name": "",
         "status": "Menunggu", "cashier": user.get("name", ""), "created_at": now_iso(),
@@ -1203,9 +1222,10 @@ async def update_purchase(pid: str, data: PurchaseOrderInput, user: dict = Depen
         raise HTTPException(status_code=400, detail="PO yang sudah diterima tidak dapat diubah")
     if not data.items:
         raise HTTPException(status_code=400, detail="Item pembelian kosong")
+    supplier_id, supplier_name = await resolve_supplier(data.supplier_id, user)
     total = sum(i.qty * i.cost for i in data.items)
     await db.purchases.update_one({"id": pid, "tenant_id": user["tenant_id"]}, {"$set": {
-        "supplier_id": data.supplier_id, "supplier_name": data.supplier_name,
+        "supplier_id": supplier_id, "supplier_name": supplier_name,
         "items": [i.model_dump() for i in data.items], "total": total, "note": data.note,
     }})
     await log_activity(user["tenant_id"], user, "Ubah PO", f"{po['po_number']} - Rp{total:,.0f}")

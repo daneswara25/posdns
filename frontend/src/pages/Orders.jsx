@@ -8,6 +8,7 @@ import { NumberInput } from "@/components/NumberInput";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NotaDialog } from "@/components/NotaDialog";
 import { DraftPreviewDialog, buildDraftText } from "@/components/DraftPreviewDialog";
+import { SupplierPickerDialog } from "@/components/SupplierPickerDialog";
 import { toast } from "sonner";
 import { CheckCircle2, Clock, Trash2, Printer, Search, FileText, Copy, HandCoins, Wallet, Pencil, Plus, Minus, PackagePlus, PackageCheck } from "lucide-react";
 
@@ -56,6 +57,7 @@ export default function Orders() {
   const [q, setQ] = useState("");
   const [nota, setNota] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [poOrder, setPoOrder] = useState(null); // order pending PO (supplier picker)
   const [edit, setEdit] = useState(null); // draft being edited
   const [editItems, setEditItems] = useState([]);
   const [editDiscount, setEditDiscount] = useState("");
@@ -95,12 +97,14 @@ export default function Orders() {
     if (o.po_created) {
       const ok = window.confirm(`Pesanan ${o.order_number} SUDAH pernah dibuatkan PO (${(o.po_numbers || []).join(", ")}).\n\nYakin ingin membuat PO lagi? Ini bisa menyebabkan pembelian dobel.`);
       if (!ok) return;
-    } else if (!window.confirm(`Buat PO pembelian dari pesanan ${o.order_number}? PO akan muncul di menu Pembelian.`)) {
-      return;
     }
+    setPoOrder(o);
+  };
+  const confirmPO = async (supplierId) => {
     try {
-      const { data } = await api.post(`/purchases/from-order/${o.id}`);
+      const { data } = await api.post(`/purchases/from-order/${poOrder.id}`, { supplier_id: supplierId });
       toast.success(`PO ${data.po_number} dibuat — cek di menu Pembelian`);
+      setPoOrder(null);
       load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
@@ -320,6 +324,13 @@ export default function Orders() {
 
       <NotaDialog nota={nota} onClose={() => setNota(null)} settings={settings} />
       <DraftPreviewDialog order={preview} onClose={() => setPreview(null)} settings={settings} />
+      <SupplierPickerDialog
+        open={!!poOrder}
+        onOpenChange={(o) => { if (!o) setPoOrder(null); }}
+        onConfirm={confirmPO}
+        title="Pilih Supplier untuk PO"
+        description={poOrder ? `PO dibuat dari pesanan ${poOrder.order_number}. Supplier wajib dipilih.` : ""}
+      />
     </div>
   );
 }
