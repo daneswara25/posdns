@@ -331,7 +331,12 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
   - Edit (`edit-po-*`) & Hapus (`delete-po-*`): HANYA untuk PO status "Menunggu". Backend `PUT /purchases/{pid}` & `DELETE /purchases/{pid}` menolak PO "Diterima" (400) agar stok tidak kacau. Edit memakai ulang form Buat PO (prefill supplier/item/catatan).
 - Verified: curl (description tersimpan; PUT/DELETE Menunggu OK; PUT/DELETE Diterima → 400) + screenshot (baris Menunggu tampil 4 aksi, Diterima hanya Preview, dialog Preview menampilkan detail). Data uji dibersihkan.
 
-## Update (2026-06) — Hapus PO Diterima (Owner) dgn koreksi stok otomatis
+## Update (2026-06) — Tanda "Sudah PO" pada Pesanan (hindari double PO)
+- ADDED backend (`server.py`): PO dari pesanan menyimpan `order_id` & `order_number`. `GET /orders` kini menyertakan `po_created` (bool) & `po_numbers` (list) yang dihitung DINAMIS dari purchases (jadi kalau PO dihapus, tanda otomatis hilang).
+- ADDED (`Orders.jsx`): badge biru **"SUDAH PO"** di kartu pesanan + tombol berubah jadi "Sudah PO" (biru). Klik PO saat sudah ada → konfirmasi peringatan double PO. Reload otomatis setelah buat PO.
+- Teruji: curl (po_created False→True dgn nomor PO→False setelah PO dihapus) + screenshot (badge & tombol). Data uji dibersihkan.
+
+
 - CHANGED (`server.py` DELETE `/purchases/{pid}`): PO status "Diterima" kini BISA dihapus **hanya oleh Owner**; saat dihapus, stok tiap item DIKURANGI kembali (movement type "Keluar", note "Pembatalan PO ...") agar data/laporan tetap balance. Non-Owner tetap ditolak (403). PO "Menunggu" tetap seperti semula.
 - CHANGED (`Purchases.jsx`): tombol Hapus muncul untuk PO Diterima jika role Owner; konfirmasi khusus memberi tahu stok akan dikoreksi.
 - Cleanup Preview: 2 PO percobaan (PO-260802-0002 TEST_SupPO, PO-260802-0001 CV Sumber Rejeki) dihapus dari DB Preview (produk terkait sudah tidak ada → tanpa dampak stok).

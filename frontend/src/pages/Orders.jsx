@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { NotaDialog } from "@/components/NotaDialog";
 import { DraftPreviewDialog, buildDraftText } from "@/components/DraftPreviewDialog";
 import { toast } from "sonner";
-import { CheckCircle2, Clock, Trash2, Printer, Search, FileText, Copy, HandCoins, Wallet, Pencil, Plus, Minus, PackagePlus } from "lucide-react";
+import { CheckCircle2, Clock, Trash2, Printer, Search, FileText, Copy, HandCoins, Wallet, Pencil, Plus, Minus, PackagePlus, PackageCheck } from "lucide-react";
 
 const METHODS = ["Tunai", "Bank Transfer", "QRIS", "E-Wallet"];
 const BANKS = ["BCA TOKO", "BRI TOKO", "BCA ADMIN (ELIS)"];
@@ -92,10 +92,16 @@ export default function Orders() {
   const del = async (id) => { if (!window.confirm("Hapus pesanan?")) return; await api.delete(`/orders/${id}`); load(); };
 
   const makePO = async (o) => {
-    if (!window.confirm(`Buat PO pembelian dari pesanan ${o.order_number}? PO akan muncul di menu Pembelian.`)) return;
+    if (o.po_created) {
+      const ok = window.confirm(`Pesanan ${o.order_number} SUDAH pernah dibuatkan PO (${(o.po_numbers || []).join(", ")}).\n\nYakin ingin membuat PO lagi? Ini bisa menyebabkan pembelian dobel.`);
+      if (!ok) return;
+    } else if (!window.confirm(`Buat PO pembelian dari pesanan ${o.order_number}? PO akan muncul di menu Pembelian.`)) {
+      return;
+    }
     try {
       const { data } = await api.post(`/purchases/from-order/${o.id}`);
       toast.success(`PO ${data.po_number} dibuat — cek di menu Pembelian`);
+      load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
 
@@ -152,6 +158,11 @@ export default function Orders() {
             {o.order_type && <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground" data-testid={`order-type-${o.id}`}>{o.order_type}</span>}
           </div>
           <p className="text-xs text-muted-foreground">{o.customer_name || "Tanpa nama"} · {new Date(o.created_at).toLocaleString("id-ID")}</p>
+          {o.po_created && (
+            <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-600" data-testid={`po-badge-${o.id}`} title={`PO: ${(o.po_numbers || []).join(", ")}`}>
+              <PackageCheck className="h-3 w-3" /> Sudah PO{o.po_numbers && o.po_numbers.length > 1 ? ` (${o.po_numbers.length})` : ""}
+            </span>
+          )}
         </div>
         <span className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${o.status === "Selesai" ? "bg-emerald-500/15 text-emerald-600" : o.status === "Draft" ? "bg-amber-500/15 text-amber-600" : "bg-orange-500/15 text-orange-600"}`}>
           {o.status === "Selesai" ? <CheckCircle2 className="h-3 w-3" /> : o.status === "Draft" ? <FileText className="h-3 w-3" /> : <Clock className="h-3 w-3" />} {o.status === "Draft" ? "Belum Bayar" : o.status}
@@ -178,7 +189,9 @@ export default function Orders() {
         {o.status !== "Draft" && (
           <Button variant="outline" size="sm" className="gap-1" onClick={() => setNota(o)} data-testid={`reprint-order-${o.id}`}><Printer className="h-4 w-4" /> Nota</Button>
         )}
-        <Button variant="outline" size="sm" className="gap-1" onClick={() => makePO(o)} data-testid={`po-order-${o.id}`}><PackagePlus className="h-4 w-4" /> PO</Button>
+        <Button variant="outline" size="sm" className={`gap-1 ${o.po_created ? "border-blue-500/40 text-blue-600" : ""}`} onClick={() => makePO(o)} data-testid={`po-order-${o.id}`}>
+          {o.po_created ? <PackageCheck className="h-4 w-4" /> : <PackagePlus className="h-4 w-4" />} {o.po_created ? "Sudah PO" : "PO"}
+        </Button>
         <Button variant="ghost" size="icon" onClick={() => del(o.id)} data-testid={`delete-order-${o.id}`}><Trash2 className="h-4 w-4 text-destructive" /></Button>
       </div>
     </div>

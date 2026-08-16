@@ -1153,6 +1153,7 @@ async def create_purchase_from_order(oid: str, user: dict = Depends(require_role
         "supplier_id": None, "supplier_name": "",
         "items": items, "total": total, "note": f"Dari pesanan {order['order_number']}",
         "customer_name": order.get("customer_name", ""),
+        "order_id": oid, "order_number": order["order_number"],
         "status": "Menunggu", "cashier": user.get("name", ""), "created_at": now_iso(),
     }
     await db.purchases.insert_one(doc)
@@ -1276,7 +1277,16 @@ async def delete_held(hid: str, user: dict = Depends(get_current_user)):
 # ---------- Custom Orders with Deposit ----------
 @api_router.get("/orders")
 async def list_orders(user: dict = Depends(get_current_user)):
-    return await db.orders.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    orders = await db.orders.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    pos = await db.purchases.find({"tenant_id": user["tenant_id"], "order_id": {"$exists": True, "$ne": None}}, {"_id": 0, "order_id": 1, "po_number": 1}).to_list(1000)
+    po_map = {}
+    for p in pos:
+        po_map.setdefault(p["order_id"], []).append(p["po_number"])
+    for o in orders:
+        nums = po_map.get(o["id"], [])
+        o["po_created"] = len(nums) > 0
+        o["po_numbers"] = nums
+    return orders
 
 
 @api_router.post("/orders")
