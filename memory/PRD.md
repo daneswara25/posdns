@@ -331,7 +331,14 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
   - Edit (`edit-po-*`) & Hapus (`delete-po-*`): HANYA untuk PO status "Menunggu". Backend `PUT /purchases/{pid}` & `DELETE /purchases/{pid}` menolak PO "Diterima" (400) agar stok tidak kacau. Edit memakai ulang form Buat PO (prefill supplier/item/catatan).
 - Verified: curl (description tersimpan; PUT/DELETE Menunggu OK; PUT/DELETE Diterima → 400) + screenshot (baris Menunggu tampil 4 aksi, Diterima hanya Preview, dialog Preview menampilkan detail). Data uji dibersihkan.
 
-## Update (2026-06) — PO dari Pesanan/Produk + Filter Produk + Nama Pelanggan di Detail PO
+## Update (2026-06) — Hapus PO Diterima (Owner) dgn koreksi stok otomatis
+- CHANGED (`server.py` DELETE `/purchases/{pid}`): PO status "Diterima" kini BISA dihapus **hanya oleh Owner**; saat dihapus, stok tiap item DIKURANGI kembali (movement type "Keluar", note "Pembatalan PO ...") agar data/laporan tetap balance. Non-Owner tetap ditolak (403). PO "Menunggu" tetap seperti semula.
+- CHANGED (`Purchases.jsx`): tombol Hapus muncul untuk PO Diterima jika role Owner; konfirmasi khusus memberi tahu stok akan dikoreksi.
+- Cleanup Preview: 2 PO percobaan (PO-260802-0002 TEST_SupPO, PO-260802-0001 CV Sumber Rejeki) dihapus dari DB Preview (produk terkait sudah tidak ada → tanpa dampak stok).
+- CATATAN PENTING: DB Preview & Produksi TERPISAH. PO yang tampak di screenshot user ada di PRODUKSI. Setelah user redeploy, Owner bisa hapus 2 PO tsb sendiri lewat UI (stok otomatis balance).
+- Teruji: curl (stok 10→terima+15=25→hapus=10 balance; reversed:true).
+
+
 - ADDED backend (`server.py`): `POST /purchases/from-order/{oid}` (salin item pesanan, qty sama, modal dari produk, supplier kosong, status Menunggu, simpan `customer_name` dari pesanan) & `POST /purchases/from-product/{pid}` (1 PO restok, qty = kekurangan stok minus). PO doc kini punya field `customer_name`.
 - ADDED (`Orders.jsx`): tombol **PO** (`po-order-*`) di tiap kartu pesanan → buat PO dari pesanan, muncul di menu Pembelian.
 - ADDED (`Purchases.jsx`): baris **Pelanggan** di dialog Detail PO (`po-preview-dialog`) bila PO berasal dari pesanan.

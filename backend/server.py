@@ -1207,7 +1207,23 @@ async def delete_purchase(pid: str, user: dict = Depends(require_roles("Owner", 
     if not po:
         raise HTTPException(status_code=404, detail="PO tidak ditemukan")
     if po.get("status") == "Diterima":
-        raise HTTPException(status_code=400, detail="PO yang sudah diterima tidak dapat dihapus")
+        # Only Owner may delete a received PO, and stock is reversed to keep data balanced.
+        if user.get("role") != "Owner":
+            raise HTTPException(status_code=403, detail="Hanya Owner yang dapat menghapus PO yang sudah diterima")
+        for i in po.get("items", []):
+            prod = await db.products.find_one({"id": i["product_id"], "tenant_id": user["tenant_id"]})
+            if prod:
+                before = prod.get("stock", 0)
+                after = before - i["qty"]
+                await db.products.update_one({"id": i["product_id"]}, {"$set": {"stock": after}})
+                await db.stock_movements.insert_one({
+                    "id": new_id(), "tenant_id": user["tenant_id"], "product_id": i["product_id"],
+                    "product_name": i["name"], "type": "Keluar", "qty": i["qty"], "before": before,
+                    "after": after, "note": f"Pembatalan PO {po['po_number']}", "user_name": user.get("name", ""), "created_at": now_iso(),
+                })
+        await db.purchases.delete_one({"id": pid, "tenant_id": user["tenant_id"]})
+        await log_activity(user["tenant_id"], user, "Hapus PO (Diterima)", f"{po['po_number']} - stok dikoreksi")
+        return {"ok": True, "reversed": True}
     await db.purchases.delete_one({"id": pid, "tenant_id": user["tenant_id"]})
     await log_activity(user["tenant_id"], user, "Hapus PO", po["po_number"])
     return {"ok": True}

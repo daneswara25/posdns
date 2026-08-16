@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api, { rupiah, formatApiError } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +12,8 @@ import { toast } from "sonner";
 import { Plus, PackageCheck, Trash2, ClipboardList, Search, Eye, Pencil } from "lucide-react";
 
 export default function Purchases() {
+  const { user } = useAuth();
+  const isOwner = user?.role === "Owner";
   const [list, setList] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [products, setProducts] = useState([]);
@@ -72,9 +75,16 @@ export default function Purchases() {
     catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
   const del = async (po) => {
-    if (!window.confirm(`Hapus PO ${po.po_number}?`)) return;
-    try { await api.delete(`/purchases/${po.id}`); toast.success("PO dihapus"); load(); }
-    catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    const received = po.status === "Diterima";
+    const msg = received
+      ? `Hapus PO ${po.po_number} yang SUDAH DITERIMA?\n\nStok barang dari PO ini akan DIKURANGI kembali agar data tetap balance. Lanjutkan?`
+      : `Hapus PO ${po.po_number}?`;
+    if (!window.confirm(msg)) return;
+    try {
+      const { data } = await api.delete(`/purchases/${po.id}`);
+      toast.success(data.reversed ? "PO dihapus & stok dikoreksi" : "PO dihapus");
+      load();
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
 
   return (
@@ -108,7 +118,7 @@ export default function Purchases() {
                   <div className="flex justify-end gap-1">
                     <Button size="sm" variant="ghost" className="gap-1" onClick={() => setPreview(po)} data-testid={`preview-po-${po.id}`}><Eye className="h-4 w-4" /> Preview</Button>
                     {po.status !== "Diterima" && <Button size="sm" variant="ghost" className="gap-1" onClick={() => openEdit(po)} data-testid={`edit-po-${po.id}`}><Pencil className="h-4 w-4" /> Edit</Button>}
-                    {po.status !== "Diterima" && <Button size="sm" variant="ghost" className="gap-1 text-destructive" onClick={() => del(po)} data-testid={`delete-po-${po.id}`}><Trash2 className="h-4 w-4" /> Hapus</Button>}
+                    {(po.status !== "Diterima" || isOwner) && <Button size="sm" variant="ghost" className="gap-1 text-destructive" onClick={() => del(po)} data-testid={`delete-po-${po.id}`}><Trash2 className="h-4 w-4" /> Hapus</Button>}
                     {po.status !== "Diterima" && <Button size="sm" variant="outline" className="gap-1" onClick={() => receive(po.id)} data-testid={`receive-po-${po.id}`}><PackageCheck className="h-4 w-4" /> Terima</Button>}
                   </div>
                 </td>
