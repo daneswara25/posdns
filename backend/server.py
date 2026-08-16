@@ -371,6 +371,16 @@ async def delete_category(cid: str, user: dict = Depends(require_roles("Owner", 
 @api_router.get("/products")
 async def list_products(user: dict = Depends(get_current_user)):
     prods = await db.products.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).to_list(2000)
+    # Mark products that already have an OPEN (Menunggu) PO to avoid double PO
+    open_pos = await db.purchases.find({"tenant_id": user["tenant_id"], "status": "Menunggu"}, {"_id": 0, "po_number": 1, "items": 1}).to_list(1000)
+    po_map = {}
+    for po in open_pos:
+        for it in po.get("items", []):
+            po_map.setdefault(it["product_id"], []).append(po["po_number"])
+    for p in prods:
+        nums = po_map.get(p["id"], [])
+        p["open_po"] = len(nums) > 0
+        p["open_po_numbers"] = nums
     prods.sort(key=lambda p: (p.get("sort_order") if p.get("sort_order") is not None else 10**9, (p.get("name") or "").lower()))
     return prods
 

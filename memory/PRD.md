@@ -331,7 +331,12 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
   - Edit (`edit-po-*`) & Hapus (`delete-po-*`): HANYA untuk PO status "Menunggu". Backend `PUT /purchases/{pid}` & `DELETE /purchases/{pid}` menolak PO "Diterima" (400) agar stok tidak kacau. Edit memakai ulang form Buat PO (prefill supplier/item/catatan).
 - Verified: curl (description tersimpan; PUT/DELETE Menunggu OK; PUT/DELETE Diterima → 400) + screenshot (baris Menunggu tampil 4 aksi, Diterima hanya Preview, dialog Preview menampilkan detail). Data uji dibersihkan.
 
-## Update (2026-06) — Tanda "Sudah PO" pada Pesanan (hindari double PO)
+## Update (2026-06) — Tanda "Sudah PO" pada Produk stok minus (hindari double PO)
+- ADDED backend (`list_products`): setiap produk kini punya `open_po` (bool) & `open_po_numbers` — dihitung dinamis dari PO status "Menunggu" yang memuat produk itu (hilang otomatis setelah PO diterima/dihapus).
+- ADDED (`Products.jsx`): tombol PO di produk stok minus berubah jadi biru **"Sudah PO"** bila sudah ada PO restok terbuka; klik lagi → konfirmasi peringatan double PO. Reload otomatis setelah buat PO.
+- Teruji: curl (open_po False→True dgn nomor PO→False setelah PO dihapus) + screenshot (BANNER "Sudah PO" biru vs GILDAN "PO" oranye). Data uji dibersihkan.
+
+
 - ADDED backend (`server.py`): PO dari pesanan menyimpan `order_id` & `order_number`. `GET /orders` kini menyertakan `po_created` (bool) & `po_numbers` (list) yang dihitung DINAMIS dari purchases (jadi kalau PO dihapus, tanda otomatis hilang).
 - ADDED (`Orders.jsx`): badge biru **"SUDAH PO"** di kartu pesanan + tombol berubah jadi "Sudah PO" (biru). Klik PO saat sudah ada → konfirmasi peringatan double PO. Reload otomatis setelah buat PO.
 - Teruji: curl (po_created False→True dgn nomor PO→False setelah PO dihapus) + screenshot (badge & tombol). Data uji dibersihkan.
