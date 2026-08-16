@@ -1126,10 +1126,60 @@ async def create_purchase(data: PurchaseOrderInput, user: dict = Depends(require
         "id": new_id(), "tenant_id": user["tenant_id"], "po_number": f"PO-{datetime.now().strftime('%y%m%d')}-{count + 1:04d}",
         "supplier_id": data.supplier_id, "supplier_name": data.supplier_name,
         "items": [i.model_dump() for i in data.items], "total": total, "note": data.note,
+        "customer_name": "",
         "status": "Menunggu", "cashier": user.get("name", ""), "created_at": now_iso(),
     }
     await db.purchases.insert_one(doc)
     await log_activity(user["tenant_id"], user, "Buat PO", f"{doc['po_number']} - Rp{total:,.0f}")
+    return clean(doc)
+
+
+@api_router.post("/purchases/from-order/{oid}")
+async def create_purchase_from_order(oid: str, user: dict = Depends(require_roles("Owner", "Manager", "Gudang"))):
+    order = await db.orders.find_one({"id": oid, "tenant_id": user["tenant_id"]})
+    if not order:
+        raise HTTPException(status_code=404, detail="Pesanan tidak ditemukan")
+    if not order.get("items"):
+        raise HTTPException(status_code=400, detail="Pesanan tidak memiliki item")
+    items = []
+    for it in order["items"]:
+        prod = await db.products.find_one({"id": it["product_id"], "tenant_id": user["tenant_id"]})
+        cost = prod.get("cost", 0) if prod else it.get("cost", 0)
+        items.append({"product_id": it["product_id"], "name": it["name"], "qty": it["qty"], "cost": cost})
+    total = sum(i["qty"] * i["cost"] for i in items)
+    count = await db.purchases.count_documents({"tenant_id": user["tenant_id"]})
+    doc = {
+        "id": new_id(), "tenant_id": user["tenant_id"], "po_number": f"PO-{datetime.now().strftime('%y%m%d')}-{count + 1:04d}",
+        "supplier_id": None, "supplier_name": "",
+        "items": items, "total": total, "note": f"Dari pesanan {order['order_number']}",
+        "customer_name": order.get("customer_name", ""),
+        "status": "Menunggu", "cashier": user.get("name", ""), "created_at": now_iso(),
+    }
+    await db.purchases.insert_one(doc)
+    await log_activity(user["tenant_id"], user, "Buat PO dari Pesanan", f"{doc['po_number']} <- {order['order_number']}")
+    return clean(doc)
+
+
+@api_router.post("/purchases/from-product/{pid}")
+async def create_purchase_from_product(pid: str, user: dict = Depends(require_roles("Owner", "Manager", "Gudang"))):
+    prod = await db.products.find_one({"id": pid, "tenant_id": user["tenant_id"]})
+    if not prod:
+        raise HTTPException(status_code=404, detail="Produk tidak ditemukan")
+    stock = prod.get("stock", 0)
+    qty = -stock if stock < 0 else 1
+    cost = prod.get("cost", 0)
+    items = [{"product_id": pid, "name": prod["name"], "qty": qty, "cost": cost}]
+    total = qty * cost
+    count = await db.purchases.count_documents({"tenant_id": user["tenant_id"]})
+    doc = {
+        "id": new_id(), "tenant_id": user["tenant_id"], "po_number": f"PO-{datetime.now().strftime('%y%m%d')}-{count + 1:04d}",
+        "supplier_id": None, "supplier_name": "",
+        "items": items, "total": total, "note": "Restok stok minus",
+        "customer_name": "",
+        "status": "Menunggu", "cashier": user.get("name", ""), "created_at": now_iso(),
+    }
+    await db.purchases.insert_one(doc)
+    await log_activity(user["tenant_id"], user, "Buat PO Restok", f"{doc['po_number']} - {prod['name']} x{qty}")
     return clean(doc)
 
 

@@ -14,7 +14,7 @@ import {
 import { toast } from "sonner";
 import { NumberInput } from "@/components/NumberInput";
 import { ViewToggle, useViewMode } from "@/components/ViewToggle";
-import { Plus, Pencil, Trash2, Search, Package, ListOrdered, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Package, ListOrdered, ChevronUp, ChevronDown, PackagePlus } from "lucide-react";
 
 const EMPTY = { name: "", sku: "", barcode: "", category_id: "", price: "", cost: "", stock: 0, min_stock: 5, unit: "pcs", image: "", description: "", active: true };
 
@@ -24,6 +24,8 @@ export default function Products() {
   const [products, setProducts] = useState([]);
   const [cats, setCats] = useState([]);
   const [q, setQ] = useState("");
+  const [sortBy, setSortBy] = useState("name");
+  const [catFilter, setCatFilter] = useState("all");
   const [view, setView] = useViewMode("view-products", "list");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY);
@@ -125,7 +127,22 @@ export default function Products() {
       toast.error(formatApiError(e.response?.data?.detail));
     }
   };
-  const filtered = products.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()));
+  const makePO = async (p) => {
+    if (!window.confirm(`Buat PO restok untuk "${p.name}"? PO akan muncul di menu Pembelian.`)) return;
+    try {
+      const { data } = await api.post(`/purchases/from-product/${p.id}`);
+      toast.success(`PO ${data.po_number} dibuat — cek di menu Pembelian`);
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
+
+  const filtered = products
+    .filter((p) => p.name.toLowerCase().includes(q.toLowerCase()))
+    .filter((p) => catFilter === "all" || (p.category_id || "none") === catFilter)
+    .sort((a, b) => {
+      if (sortBy === "price") return (a.price || 0) - (b.price || 0);
+      if (sortBy === "stock") return (a.stock || 0) - (b.stock || 0);
+      return a.name.localeCompare(b.name, "id");
+    });
 
   return (
     <div className="space-y-6">
@@ -151,7 +168,25 @@ export default function Products() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari produk..." className="pl-10" data-testid="product-search" />
         </div>
-        <ViewToggle mode={view} onChange={setView} />
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[180px]" data-testid="product-sort-select"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name">Nama (A-Z)</SelectItem>
+              <SelectItem value="price">Harga (terendah)</SelectItem>
+              <SelectItem value="stock">Stok (terendah)</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={catFilter} onValueChange={setCatFilter}>
+            <SelectTrigger className="w-[180px]" data-testid="product-category-filter"><SelectValue placeholder="Semua Kategori" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Kategori</SelectItem>
+              {cats.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              {products.some((p) => !p.category_id) && <SelectItem value="none">Tanpa Kategori</SelectItem>}
+            </SelectContent>
+          </Select>
+          <ViewToggle mode={view} onChange={setView} />
+        </div>
       </div>
 
       {view === "list" && (
@@ -188,6 +223,7 @@ export default function Products() {
                 <td className="px-4 py-3 text-right">
                   {canEdit && (
                     <div className="flex justify-end gap-1">
+                      {p.stock < 0 && <Button variant="outline" size="sm" className="h-8 gap-1 px-2 text-orange-600" onClick={() => makePO(p)} data-testid={`po-product-${p.id}`}><PackagePlus className="h-4 w-4" /> PO</Button>}
                       <Button variant="ghost" size="icon" onClick={() => openEdit(p)} data-testid={`edit-product-${p.id}`}><Pencil className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" onClick={() => del(p.id)} data-testid={`delete-product-${p.id}`}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </div>
@@ -216,6 +252,7 @@ export default function Products() {
                 </div>
                 {canEdit && (
                   <div className="mt-2 flex gap-1">
+                    {p.stock < 0 && <Button variant="outline" size="sm" className="h-7 flex-1 px-2 text-orange-600" onClick={() => makePO(p)} data-testid={`po-product-${p.id}`}><PackagePlus className="h-3 w-3" /></Button>}
                     <Button variant="outline" size="sm" className="h-7 flex-1 px-2" onClick={() => openEdit(p)}><Pencil className="h-3 w-3" /></Button>
                     <Button variant="outline" size="sm" className="h-7 flex-1 px-2" onClick={() => del(p.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
                   </div>

@@ -331,7 +331,14 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
   - Edit (`edit-po-*`) & Hapus (`delete-po-*`): HANYA untuk PO status "Menunggu". Backend `PUT /purchases/{pid}` & `DELETE /purchases/{pid}` menolak PO "Diterima" (400) agar stok tidak kacau. Edit memakai ulang form Buat PO (prefill supplier/item/catatan).
 - Verified: curl (description tersimpan; PUT/DELETE Menunggu OK; PUT/DELETE Diterima → 400) + screenshot (baris Menunggu tampil 4 aksi, Diterima hanya Preview, dialog Preview menampilkan detail). Data uji dibersihkan.
 
-## Update (2026-06) — Sumber Penjualan (Channel: Toko/Shopee/Tokopedia/dll)
+## Update (2026-06) — PO dari Pesanan/Produk + Filter Produk + Nama Pelanggan di Detail PO
+- ADDED backend (`server.py`): `POST /purchases/from-order/{oid}` (salin item pesanan, qty sama, modal dari produk, supplier kosong, status Menunggu, simpan `customer_name` dari pesanan) & `POST /purchases/from-product/{pid}` (1 PO restok, qty = kekurangan stok minus). PO doc kini punya field `customer_name`.
+- ADDED (`Orders.jsx`): tombol **PO** (`po-order-*`) di tiap kartu pesanan → buat PO dari pesanan, muncul di menu Pembelian.
+- ADDED (`Purchases.jsx`): baris **Pelanggan** di dialog Detail PO (`po-preview-dialog`) bila PO berasal dari pesanan.
+- ADDED (`Products.jsx`): dropdown **Urutkan** (Nama A-Z / Harga terendah / Stok terendah) + filter **Kategori**; tombol **PO** (`po-product-*`) oranye di baris/kartu produk berstok MINUS → buat PO restok.
+- Teruji: curl (from-order bawa customer_name "GITA" 2 item; from-product BANNER stok -4 → qty 4) + screenshot (filter/sort & tombol PO stok minus di Produk, tombol PO di Pesanan). Data uji dibersihkan.
+
+
 - ADDED (`POS.jsx`): pemilih **Sumber Penjualan** (Toko, Shopee, Tokopedia, WhatsApp, Lainnya) di dialog Pembayaran, Deposit, & Tahan/Draft. Field `channel` dikirim ke API dan disimpan di dokumen sale/order. Default "Toko".
 - Backend (`server.py`): `SaleInput.channel` + `CustomOrderInput.channel`; sale doc & settlement sale menyimpan `channel`; `GET /reports/sales` kini mengembalikan `by_channel` (total, profit, count per channel). Transaksi lama otomatis dianggap "Toko".
 - Reports (`Reports.jsx`): section **Ringkasan Per Sumber Penjualan** (Omzet & Laba Kotor per channel), kolom Sumber di detail transaksi, dan kolom/ringkasan channel di ekspor Excel.

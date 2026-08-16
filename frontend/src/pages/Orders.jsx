@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { NotaDialog } from "@/components/NotaDialog";
 import { DraftPreviewDialog, buildDraftText } from "@/components/DraftPreviewDialog";
 import { toast } from "sonner";
-import { CheckCircle2, Clock, Trash2, Printer, Search, FileText, Copy, HandCoins, Wallet, Pencil, Plus, Minus } from "lucide-react";
+import { CheckCircle2, Clock, Trash2, Printer, Search, FileText, Copy, HandCoins, Wallet, Pencil, Plus, Minus, PackagePlus } from "lucide-react";
 
 const METHODS = ["Tunai", "Bank Transfer", "QRIS", "E-Wallet"];
 const BANKS = ["BCA TOKO", "BRI TOKO", "BCA ADMIN (ELIS)"];
@@ -91,6 +91,14 @@ export default function Orders() {
 
   const del = async (id) => { if (!window.confirm("Hapus pesanan?")) return; await api.delete(`/orders/${id}`); load(); };
 
+  const makePO = async (o) => {
+    if (!window.confirm(`Buat PO pembelian dari pesanan ${o.order_number}? PO akan muncul di menu Pembelian.`)) return;
+    try {
+      const { data } = await api.post(`/purchases/from-order/${o.id}`);
+      toast.success(`PO ${data.po_number} dibuat — cek di menu Pembelian`);
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
+
   const openEdit = (o) => {
     setEdit(o);
     setEditItems((o.items || []).map((i) => ({ ...i })));
@@ -170,6 +178,7 @@ export default function Orders() {
         {o.status !== "Draft" && (
           <Button variant="outline" size="sm" className="gap-1" onClick={() => setNota(o)} data-testid={`reprint-order-${o.id}`}><Printer className="h-4 w-4" /> Nota</Button>
         )}
+        <Button variant="outline" size="sm" className="gap-1" onClick={() => makePO(o)} data-testid={`po-order-${o.id}`}><PackagePlus className="h-4 w-4" /> PO</Button>
         <Button variant="ghost" size="icon" onClick={() => del(o.id)} data-testid={`delete-order-${o.id}`}><Trash2 className="h-4 w-4 text-destructive" /></Button>
       </div>
     </div>

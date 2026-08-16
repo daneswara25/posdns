@@ -163,6 +163,7 @@ export default function Purchases() {
             <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-2">
                 <div><span className="text-muted-foreground">Supplier</span><p className="font-medium">{preview.supplier_name || "—"}</p></div>
+                {preview.customer_name ? <div><span className="text-muted-foreground">Pelanggan</span><p className="font-medium">{preview.customer_name}</p></div> : null}
                 <div><span className="text-muted-foreground">Status</span><p><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${preview.status === "Diterima" ? "bg-emerald-500/15 text-emerald-600" : "bg-orange-500/15 text-orange-600"}`}>{preview.status}</span></p></div>
                 <div><span className="text-muted-foreground">Dibuat</span><p>{preview.created_at ? new Date(preview.created_at).toLocaleString("id-ID") : "—"}</p></div>
                 {preview.received_at && <div><span className="text-muted-foreground">Diterima</span><p>{new Date(preview.received_at).toLocaleString("id-ID")}</p></div>}
