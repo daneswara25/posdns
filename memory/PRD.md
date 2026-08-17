@@ -331,7 +331,13 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
   - Edit (`edit-po-*`) & Hapus (`delete-po-*`): HANYA untuk PO status "Menunggu". Backend `PUT /purchases/{pid}` & `DELETE /purchases/{pid}` menolak PO "Diterima" (400) agar stok tidak kacau. Edit memakai ulang form Buat PO (prefill supplier/item/catatan).
 - Verified: curl (description tersimpan; PUT/DELETE Menunggu OK; PUT/DELETE Diterima → 400) + screenshot (baris Menunggu tampil 4 aksi, Diterima hanya Preview, dialog Preview menampilkan detail). Data uji dibersihkan.
 
-## Update (2026-06) — Supplier WAJIB untuk semua PO
+## Update (2026-06) — Fix bagikan gambar nota tidak stabil + Cetak Draft
+- FIXED (`lib/captureImage.js` NEW): util `captureToBlob` untuk render gambar stabil — tunggu semua `<img>` termuat (waitForImages), tunggu `document.fonts.ready`, retry hingga 3x, fallback `toBlob`→`dataURL`. `shareOrDownload` share (mobile)/unduh (desktop). Root cause instabilitas: html2canvas mengambil snapshot sebelum logo/font selesai dimuat.
+- CHANGED share image ke util baru di: `NotaDialog.jsx` (ShareNotaImageButton), `DraftPreviewDialog.jsx`, dan `VoucherDialog.jsx` (Pengeluaran/Pendapatan) — semua kini pakai captureToBlob yang stabil.
+- ADDED cetak untuk pesanan DRAFT: tombol **Cetak** di kartu draft (`print-draft-*`) & di dialog Preview (`draft-print-button`) → `printReceiptSmart({...order,__draft:true})` (thermal/desktop per-device). `printer.js`: `paymentStatus` draft = "BELUM DIBAYAR"; printDesktop & buildEscPos skip baris pembayaran utk draft.
+- Teruji oleh testing_agent (iteration_14.json): 5/5 percobaan bagikan gambar nota SUKSES tanpa toast error; tombol Cetak draft (kartu & dialog) & bagikan penawaran bekerja tanpa error. Frontend 100%. Data uji draft dibersihkan.
+
+
 - CHANGED backend (`server.py`): helper `resolve_supplier` memvalidasi supplier (tidak boleh kosong / tidak ada / nama '-'). Diterapkan di `POST /purchases`, `PUT /purchases/{pid}`, `POST /purchases/from-order/{oid}`, `POST /purchases/from-product/{pid}`. Dua endpoint auto kini menerima body `{supplier_id}` (model `SupplierRef`). Tanpa supplier → 400.
 - ADDED (`SupplierPickerDialog.jsx`): dialog pilih supplier (wajib) dipakai di Orders & Products sebelum membuat PO otomatis. Kalau belum ada supplier → arahkan tambah di menu Supplier.
 - CHANGED (`Purchases.jsx`): form PO manual — label "Supplier *" + validasi wajib sebelum simpan.

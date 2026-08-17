@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import html2canvas from "html2canvas";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { rupiah } from "@/lib/api";
-import { rp, normalizePhone } from "@/lib/printer";
+import { rp, normalizePhone, printReceiptSmart } from "@/lib/printer";
+import { captureToBlob, shareOrDownload } from "@/lib/captureImage";
 import { ReceiptShareCard } from "@/components/ReceiptShareCard";
 import { toast } from "sonner";
-import { MessageCircle, Copy, Image as ImageIcon, FileText } from "lucide-react";
+import { MessageCircle, Copy, Image as ImageIcon, FileText, Printer } from "lucide-react";
 
 // Plain-text quotation for WhatsApp / clipboard (distinct from paid receipt text).
 export function buildDraftText(o, settings = {}) {
@@ -69,21 +69,18 @@ export function DraftPreviewDialog({ order, onClose, settings = {} }) {
     if (!cardRef.current) return;
     setBusy(true);
     try {
-      const canvas = await html2canvas(cardRef.current, { scale: 2, useCORS: true, backgroundColor: "#15171c" });
-      const blob = await new Promise((res) => canvas.toBlob(res, "image/png"));
+      const blob = await captureToBlob(cardRef.current, { backgroundColor: "#15171c" });
       const fname = `penawaran-${order.order_number || "draft"}.png`;
-      const file = new File([blob], fname, { type: "image/png" });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try { await navigator.share({ files: [file], title: "Penawaran Pesanan", text: `Penawaran ${order.order_number || ""}` }); }
-        catch (err) { if (err?.name !== "AbortError") throw err; }
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a"); a.href = url; a.download = fname;
-        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-        toast.success("Gambar penawaran diunduh — tinggal lampirkan di WhatsApp");
-      }
-    } catch (e) { toast.error("Gagal membuat gambar penawaran"); }
+      const res = await shareOrDownload(blob, fname, { title: "Penawaran Pesanan", text: `Penawaran ${order.order_number || ""}` });
+      if (res === "downloaded") toast.success("Gambar penawaran diunduh — tinggal lampirkan di WhatsApp");
+    } catch (e) { toast.error("Gagal membuat gambar penawaran. Coba lagi sebentar."); }
     finally { setBusy(false); }
+  };
+  const doPrint = async () => {
+    try {
+      const mode = await printReceiptSmart({ ...order, __draft: true }, settings);
+      if (mode === "bluetooth") toast.success("Penawaran dikirim ke printer Bluetooth");
+    } catch (e) { toast.error(e.message || "Gagal mencetak penawaran"); }
   };
 
   return (
@@ -131,6 +128,7 @@ export function DraftPreviewDialog({ order, onClose, settings = {} }) {
             </Button>
             <div className="flex gap-2">
               <Button variant="secondary" className="flex-1 gap-2" onClick={doCopy} data-testid="draft-copy-button"><Copy className="h-4 w-4" /> Salin Pesanan</Button>
+              <Button variant="outline" className="flex-1 gap-2" onClick={doPrint} data-testid="draft-print-button"><Printer className="h-4 w-4" /> Cetak</Button>
               <Button className="flex-1" onClick={onClose} data-testid="draft-close-button">Tutup</Button>
             </div>
           </div>

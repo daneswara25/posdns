@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import html2canvas from "html2canvas";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { rupiah } from "@/lib/api";
+import { captureToBlob, shareOrDownload } from "@/lib/captureImage";
 import { printReceiptSmart, paymentStatus, sendReceiptWhatsApp, copyReceiptText } from "@/lib/printer";
 import { ReceiptShareCard } from "@/components/ReceiptShareCard";
 import { toast } from "sonner";
@@ -20,22 +20,12 @@ export function ShareNotaImageButton({ nota, settings = {}, className = "w-full 
     if (!cardRef.current) return;
     setBusy(true);
     try {
-      const canvas = await html2canvas(cardRef.current, { scale: 2, useCORS: true, backgroundColor: "#15171c" });
-      const blob = await new Promise((res) => canvas.toBlob(res, "image/png"));
+      const blob = await captureToBlob(cardRef.current, { backgroundColor: "#15171c" });
       const fname = `nota-${nota.invoice || nota.order_number || "struk"}.png`;
-      const file = new File([blob], fname, { type: "image/png" });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file], title: "Nota Transaksi", text: `Nota ${nota.invoice || nota.order_number || ""}` });
-        } catch (err) { if (err?.name !== "AbortError") throw err; }
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a"); a.href = url; a.download = fname;
-        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-        toast.success("Gambar nota diunduh — tinggal lampirkan di WhatsApp");
-      }
+      const res = await shareOrDownload(blob, fname, { title: "Nota Transaksi", text: `Nota ${nota.invoice || nota.order_number || ""}` });
+      if (res === "downloaded") toast.success("Gambar nota diunduh — tinggal lampirkan di WhatsApp");
     } catch (e) {
-      toast.error("Gagal membuat gambar nota");
+      toast.error("Gagal membuat gambar nota. Coba lagi sebentar.");
     } finally { setBusy(false); }
   };
 

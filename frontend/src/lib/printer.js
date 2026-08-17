@@ -32,6 +32,7 @@ export function setDevicePrinterConfig(cfg = {}) {
 
 // Payment status label for a receipt/order: "DEPOSIT" (pending order) or "LUNAS VIA <method>".
 export function paymentStatus(r) {
+  if (r && (r.__draft === true || r.status === "Draft")) return "BELUM DIBAYAR";
   const pendingOrder = r && r.deposit_amount != null && r.status && r.status !== "Selesai";
   if (pendingOrder) return "DEPOSIT";
   return "LUNAS VIA " + (r?.payment_method || "-");
@@ -269,7 +270,9 @@ async function buildEscPos(r, settings) {
   push([ESC, 0x21, 0x08]); // bold
   text(row("TOTAL", rp(r.total)));
   push([ESC, 0x21, 0x00]);
-  if (r.deposit_amount != null && (r.deposit_amount || r.remaining != null)) {
+  if (r.__draft === true || r.status === "Draft") {
+    // draft/quotation: no payment lines
+  } else if (r.deposit_amount != null && (r.deposit_amount || r.remaining != null)) {
     text(row("Deposit (DP)", rp(r.deposit_amount)));
     text(row(r.status === "Selesai" ? "Lunas" : "Sisa", rp(r.remaining)));
   } else {
@@ -296,8 +299,11 @@ export function printDesktop(r, settings) {
   const items = (r.items || [])
     .map((i) => line(`${i.qty}x ${i.name}`, rp(i.price * i.qty)) + `<div class="note">@${rp(i.price)}</div>` + (i.note ? `<div class="note">* ${i.note}</div>` : ""))
     .join("");
+  const isDraft = r.__draft === true || r.status === "Draft";
   const isOrder = r.deposit_amount != null && r.remaining != null && !r.paid_amount;
-  const payRows = isOrder
+  const payRows = isDraft
+    ? ""
+    : isOrder
     ? line("Deposit (DP)", rp(r.deposit_amount)) + line(r.status === "Selesai" ? "Lunas" : "Sisa", rp(r.remaining))
     : line(r.payment_method || "Bayar", rp(r.paid_amount)) + line("Kembalian", rp(r.change || 0));
   const pageW = String(settings.paper_width || "58") === "80" ? "80mm" : "58mm";

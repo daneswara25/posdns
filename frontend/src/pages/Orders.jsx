@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { NotaDialog } from "@/components/NotaDialog";
 import { DraftPreviewDialog, buildDraftText } from "@/components/DraftPreviewDialog";
 import { SupplierPickerDialog } from "@/components/SupplierPickerDialog";
+import { printReceiptSmart } from "@/lib/printer";
 import { toast } from "sonner";
 import { CheckCircle2, Clock, Trash2, Printer, Search, FileText, Copy, HandCoins, Wallet, Pencil, Plus, Minus, PackagePlus, PackageCheck } from "lucide-react";
 
@@ -108,6 +109,12 @@ export default function Orders() {
       load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
+  const printDraft = async (o) => {
+    try {
+      const mode = await printReceiptSmart({ ...o, __draft: true }, settings);
+      if (mode === "bluetooth") toast.success("Penawaran dikirim ke printer Bluetooth");
+    } catch (e) { toast.error(e.message || "Gagal mencetak penawaran"); }
+  };
 
   const openEdit = (o) => {
     setEdit(o);
@@ -185,6 +192,7 @@ export default function Orders() {
             <Button variant="secondary" size="sm" className="gap-1" onClick={() => copyDraft(o)} data-testid={`copy-order-${o.id}`}><Copy className="h-4 w-4" /> Salin</Button>
             <Button size="sm" variant="outline" className="gap-1" onClick={() => { setDp(o); setDpMethod("Tunai"); setDpAmt(""); }} data-testid={`dp-order-${o.id}`}><HandCoins className="h-4 w-4" /> Jadi DP</Button>
             <Button size="sm" className="gap-1" onClick={() => { setSettle(o); setMethod("Tunai"); setPaid(o.total); }} data-testid={`pay-order-${o.id}`}><Wallet className="h-4 w-4" /> Lunasi</Button>
+            <Button variant="outline" size="sm" className="gap-1" onClick={() => printDraft(o)} data-testid={`print-draft-${o.id}`}><Printer className="h-4 w-4" /> Cetak</Button>
           </>
         )}
         {o.status === "Proses" && (

@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
-import html2canvas from "html2canvas";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { rupiah } from "@/lib/api";
 import { terbilang } from "@/lib/terbilang";
+import { captureToBlob, shareOrDownload } from "@/lib/captureImage";
 import { VoucherShareCard } from "@/components/VoucherShareCard";
 import { toast } from "sonner";
 import { Printer, Image as ImageIcon } from "lucide-react";
@@ -19,21 +19,12 @@ export function VoucherDialog({ trx, kind = "expense", settings = {}, onClose })
     if (!cardRef.current) return;
     setBusy(true);
     try {
-      const canvas = await html2canvas(cardRef.current, { scale: 2, useCORS: true, backgroundColor: "#15171c" });
-      const blob = await new Promise((res) => canvas.toBlob(res, "image/png"));
       const fname = `${isExpense ? "bukti-pengeluaran" : "bukti-pendapatan"}-${String(trx.id || "").slice(0, 8)}.png`;
-      const file = new File([blob], fname, { type: "image/png" });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try { await navigator.share({ files: [file], title: isExpense ? "Bukti Pengeluaran" : "Bukti Pendapatan" }); }
-        catch (err) { if (err?.name !== "AbortError") throw err; }
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a"); a.href = url; a.download = fname;
-        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-        toast.success("Gambar bukti diunduh");
-      }
+      const blob = await captureToBlob(cardRef.current, { backgroundColor: "#15171c" });
+      const res = await shareOrDownload(blob, fname, { title: isExpense ? "Bukti Pengeluaran" : "Bukti Pendapatan" });
+      if (res === "downloaded") toast.success("Gambar bukti diunduh");
     } catch (e) {
-      toast.error("Gagal membuat gambar bukti");
+      toast.error("Gagal membuat gambar bukti. Coba lagi sebentar.");
     } finally { setBusy(false); }
   };
 
