@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import api, { formatApiError } from "@/lib/api";
+import { restorePrinterConnection } from "@/lib/printer";
 import { toast } from "sonner";
 import {
   LayoutDashboard, Package, Tags, Warehouse, BarChart3, Users as UsersIcon,
@@ -41,6 +42,10 @@ export default function Layout() {
   const [pw, setPw] = useState({ current_password: "", new_password: "", confirm: "" });
   const [pwLoading, setPwLoading] = useState(false);
   const items = NAV.filter((n) => n.roles.includes(user?.role));
+
+  // Restore a previously-connected Bluetooth printer on ANY page/refresh so the
+  // link stays alive for cashiers regardless of the landing route.
+  useEffect(() => { restorePrinterConnection().catch(() => {}); }, []);
 
   const changePassword = async () => {
     if (pw.new_password !== pw.confirm) return toast.error("Konfirmasi password tidak cocok");

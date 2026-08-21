@@ -331,7 +331,15 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
   - Edit (`edit-po-*`) & Hapus (`delete-po-*`): HANYA untuk PO status "Menunggu". Backend `PUT /purchases/{pid}` & `DELETE /purchases/{pid}` menolak PO "Diterima" (400) agar stok tidak kacau. Edit memakai ulang form Buat PO (prefill supplier/item/catatan).
 - Verified: curl (description tersimpan; PUT/DELETE Menunggu OK; PUT/DELETE Diterima → 400) + screenshot (baris Menunggu tampil 4 aksi, Diterima hanya Preview, dialog Preview menampilkan detail). Data uji dibersihkan.
 
-## Update (2026-06) — Ganti "@" harga satuan → "{harga} x {qty}" (thermal-safe)
+## Update (2026-06) — FIX koneksi printer Bluetooth putus tiba-tiba
+- ROOT CAUSE: BLE GATT idle-death + tidak ada auto-reconnect (dulu hanya set btChar=null saat disconnect). Juga print gagal saat link mati diam-diam.
+- FIXED (`lib/printer.js`): (1) **keep-alive** kirim byte NUL tiap 8 dtk (watchdog) agar link tak idle-timeout; (2) **auto-reconnect** dgn backoff pada event `gattserverdisconnected` + watchdog cek `gatt.connected`; (3) **safeWrite mutex** cegah tabrakan write; (4) **restorePrinterConnection()** via `navigator.bluetooth.getDevices()` sambung ulang setelah reload TANPA klik user; (5) `printReceiptSmart` bluetooth: reconnect+retry 1x bila write gagal (link mati diam-diam) + pesan error ramah Bahasa Indonesia; (6) `setDevicePrinterConfig` kini MERGE (simpan last_device_id/name).
+- FIXED (`components/Layout.jsx`): `restorePrinterConnection()` dipanggil di root layout → link tersambung ulang di SEMUA halaman/refresh, bukan hanya /pengaturan.
+- ADDED (`Settings.jsx`): indikator status live (Terhubung / Menyambung ulang… / Koneksi terputus) via `setPrinterStatusCallback` + teks keep-alive.
+- Teruji testing_agent (iteration_16.json) dgn mock BLE: 100% — restore lintas-route, reconnect+retry saat write gagal, keep-alive, pesan error ramah, 0 error konsol. (iteration_15 menemukan 2 gap → sudah diperbaiki & lolos di iteration_16.)
+- CATATAN: BLE asli tak bisa diuji di CI (tanpa hardware); logika diverifikasi via mock. User perlu **redeploy** lalu uji di perangkat nyata.
+
+
 - FIXED: karakter "@" pada baris harga satuan tercetak sebagai kotak hitam di printer termal. Diganti jadi format `Rp{harga} x {qty}` di SEMUA output struk: thermal ESC/POS (`printer.js` buildEscPos), desktop print (printDesktop), teks WhatsApp (copyReceiptText & DraftPreviewDialog), preview di layar (`NotaDialog.jsx`), keranjang POS (`POS.jsx`). Share image card sudah pakai format tsb.
 - Teruji screenshot: preview nota menampilkan "Rp38.000 x 1" (tanpa "@").
 

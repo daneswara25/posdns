@@ -13,12 +13,14 @@ import { Store, Save, Printer, Bluetooth, Trash2, AlertTriangle, Monitor, TestTu
 import {
   connectBluetoothPrinter, disconnectPrinter, isPrinterConnected, getPrinterName,
   bluetoothSupported, printReceiptSmart, getDevicePrinterConfig, setDevicePrinterConfig,
+  setPrinterStatusCallback, restorePrinterConnection,
 } from "@/lib/printer";
 
 export default function Settings() {
   const { user } = useAuth();
   const [form, setForm] = useState({ business_name: "", address: "", phone: "", currency: "Rp", tax_rate: 0, receipt_footer: "", print_mode: "desktop", paper_width: "58", printers: [], active_printer: "" });
   const [btName, setBtName] = useState(getPrinterName());
+  const [btStatus, setBtStatus] = useState(isPrinterConnected() ? "connected" : "disconnected");
   const [connecting, setConnecting] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -41,6 +43,19 @@ export default function Settings() {
       }));
     });
     // eslint-disable-next-line
+  }, []);
+
+  // Reflect live Bluetooth status (auto-reconnect) + restore printer after reload.
+  useEffect(() => {
+    setPrinterStatusCallback((status, name) => {
+      setBtStatus(status);
+      if (status === "connected") setBtName(name || getPrinterName());
+      if (status === "disconnected") setBtName("");
+    });
+    restorePrinterConnection().then((name) => {
+      if (name) { setBtName(name); setBtStatus("connected"); }
+    });
+    return () => setPrinterStatusCallback(null);
   }, []);
 
   const openAddPrinter = () => { setEditingPrinter(null); setPForm({ name: "", connection: "desktop", paper_width: "80" }); setPrinterDialog(true); };
@@ -106,6 +121,7 @@ export default function Settings() {
     try {
       const name = await connectBluetoothPrinter();
       setBtName(name);
+      setBtStatus("connected");
       toast.success(`Terhubung ke ${name}`);
     } catch (e) {
       if (e.name !== "NotFoundError") toast.error(e.message || "Gagal menghubungkan printer");
@@ -114,7 +130,7 @@ export default function Settings() {
     }
   };
 
-  const disconnectBt = () => { disconnectPrinter(); setBtName(""); toast.info("Printer diputus"); };
+  const disconnectBt = () => { disconnectPrinter(); setBtName(""); setBtStatus("disconnected"); toast.info("Printer diputus"); };
 
   const handleLogo = (e) => {
     const file = e.target.files?.[0];
@@ -302,10 +318,14 @@ export default function Settings() {
                 <>
                   <div className="mb-3 flex items-center justify-between">
                     <span className="text-sm">Status printer Bluetooth:</span>
-                    <span className={`text-sm font-semibold ${btName ? "text-emerald-600" : "text-muted-foreground"}`} data-testid="bt-status">
-                      {btName ? `Terhubung · ${btName}` : "Belum terhubung"}
+                    <span className={`text-sm font-semibold ${btStatus === "connected" ? "text-emerald-600" : btStatus === "reconnecting" ? "text-amber-600" : btStatus === "lost" ? "text-destructive" : "text-muted-foreground"}`} data-testid="bt-status">
+                      {btStatus === "connected" ? `Terhubung · ${btName}`
+                        : btStatus === "reconnecting" ? `Menyambung ulang… · ${btName}`
+                        : btStatus === "lost" ? `Koneksi terputus · ${btName} (menyambung ulang otomatis saat printer aktif)`
+                        : "Belum terhubung"}
                     </span>
                   </div>
+                  <p className="mb-3 text-xs text-muted-foreground">Koneksi dijaga otomatis (keep-alive) dan akan tersambung ulang sendiri jika printer sempat terputus — tanpa perlu buka menu ini lagi.</p>
                   <div className="flex flex-wrap gap-2">
                     <Button onClick={connectBt} disabled={connecting} className="gap-2" data-testid="bt-connect-button">
                       <Bluetooth className="h-4 w-4" /> {connecting ? "Menghubungkan..." : btName ? "Hubungkan Ulang" : "Hubungkan Printer"}

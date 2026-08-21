@@ -3,6 +3,16 @@
 let btDevice = null;
 let btChar = null;
 let btName = "";
+let btKeepStay = false;     // maintain connection until user explicitly disconnects
+let btWatchdog = null;      // interval: watchdog + keep-alive
+let btReconnecting = false;
+let btWriteBusy = false;    // simple mutex so keep-alive & print never overlap
+let btStatusCb = null;      // UI callback: 'connected' | 'reconnecting' | 'lost' | 'disconnected'
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function notifyBt(status) { try { btStatusCb && btStatusCb(status, btName); } catch (e) {} }
+export function setPrinterStatusCallback(cb) { btStatusCb = cb; }
+export const isPrinterReconnecting = () => btReconnecting;
 
 export const rp = (n) => "Rp" + Number(n || 0).toLocaleString("id-ID", { maximumFractionDigits: 0 });
 
@@ -20,11 +30,15 @@ export function getDevicePrinterConfig() {
 }
 export function setDevicePrinterConfig(cfg = {}) {
   try {
+    const cur = getDevicePrinterConfig();
+    const next = { ...cur, ...cfg };
     localStorage.setItem(DEVICE_CFG_KEY, JSON.stringify({
-      print_mode: cfg.print_mode || "desktop",
-      paper_width: cfg.paper_width || "58",
-      printers: cfg.printers || [],
-      active_printer: cfg.active_printer || "",
+      print_mode: next.print_mode || "desktop",
+      paper_width: next.paper_width || "58",
+      printers: next.printers || [],
+      active_printer: next.active_printer || "",
+      last_device_id: next.last_device_id || "",
+      last_device_name: next.last_device_name || "",
     }));
   } catch (e) { /* ignore */ }
   return true;
@@ -126,59 +140,155 @@ export const bluetoothSupported = () => typeof navigator !== "undefined" && !!na
 export const isPrinterConnected = () => !!btChar;
 export const getPrinterName = () => btName;
 
-// Connect to a BLE thermal printer and locate a writable characteristic.
+const KNOWN_SERVICES = [
+  0x18f0, 0xffe0, 0xff00, 0xfff0, 0xe0ff,
+  "0000ffe0-0000-1000-8000-00805f9b34fb",
+  "000018f0-0000-1000-8000-00805f9b34fb",
+  "0000ff00-0000-1000-8000-00805f9b34fb",
+  "0000fff0-0000-1000-8000-00805f9b34fb",
+  "49535343-fe7d-4ae5-8fa9-9fafd205e455",
+];
+
+// Find the first writable characteristic across the printer's GATT services.
+async function locateWritable(server) {
+  const services = await server.getPrimaryServices();
+  for (const s of services) {
+    const chars = await s.getCharacteristics();
+    for (const c of chars) {
+      if (c.properties.write || c.properties.writeWithoutResponse) return c;
+    }
+  }
+  return null;
+}
+
+// Attach the disconnect listener + start the keep-alive/watchdog loop that keeps
+// the link alive and silently reconnects if the printer drops unexpectedly.
+function armConnection(device) {
+  try { device.removeEventListener("gattserverdisconnected", onGattDisconnected); } catch (e) {}
+  device.addEventListener("gattserverdisconnected", onGattDisconnected);
+  startWatchdog();
+}
+
+function onGattDisconnected() {
+  btChar = null;
+  if (btKeepStay) { notifyBt("reconnecting"); reconnectPrinter(); }
+  else notifyBt("disconnected");
+}
+
+// Reconnect to the SAME already-permitted device (no user gesture needed) with backoff.
+async function reconnectPrinter(maxAttempts = 10) {
+  if (btReconnecting || !btDevice || !btKeepStay) return false;
+  btReconnecting = true;
+  notifyBt("reconnecting");
+  let delay = 600;
+  for (let a = 0; a < maxAttempts && btKeepStay; a++) {
+    try {
+      if (!btDevice.gatt.connected) await btDevice.gatt.connect();
+      const w = await locateWritable(btDevice.gatt);
+      if (w) { btChar = w; btReconnecting = false; notifyBt("connected"); return true; }
+    } catch (e) { /* retry */ }
+    await sleep(delay);
+    delay = Math.min(Math.round(delay * 1.6), 5000);
+  }
+  btReconnecting = false;
+  if (btKeepStay) notifyBt("lost");
+  return false;
+}
+
+function startWatchdog() {
+  stopWatchdog();
+  btWatchdog = setInterval(async () => {
+    if (!btKeepStay || !btDevice) return;
+    if (!btDevice.gatt.connected) { btChar = null; reconnectPrinter(); return; }
+    if (!btChar || btReconnecting) return;
+    // Keep-alive: NUL byte is ignored by ESC/POS printers but keeps the BLE link
+    // active, preventing the idle timeout that causes sudden disconnects.
+    try {
+      await safeWrite(async (ch) => {
+        if (ch.properties.writeWithoutResponse) await ch.writeValueWithoutResponse(new Uint8Array([0x00]));
+        else await ch.writeValue(new Uint8Array([0x00]));
+      });
+    } catch (e) { btChar = null; reconnectPrinter(); }
+  }, 8000);
+}
+function stopWatchdog() { if (btWatchdog) { clearInterval(btWatchdog); btWatchdog = null; } }
+
+// Serialize all writes (print + keep-alive) so BLE never gets "operation in progress".
+async function safeWrite(fn) {
+  let waited = 0;
+  while (btWriteBusy && waited < 5000) { await sleep(25); waited += 25; }
+  btWriteBusy = true;
+  try {
+    if (!btChar) throw new Error("Printer tidak terhubung");
+    return await fn(btChar);
+  } finally { btWriteBusy = false; }
+}
+
+// Connect to a BLE thermal printer and keep it alive across the session.
 export async function connectBluetoothPrinter() {
   if (!bluetoothSupported()) {
     throw new Error("Browser ini tidak mendukung Web Bluetooth. Gunakan Chrome di Android/Windows.");
   }
-  const KNOWN_SERVICES = [
-    0x18f0, 0xffe0, 0xff00, 0xfff0, 0xe0ff,
-    "0000ffe0-0000-1000-8000-00805f9b34fb",
-    "000018f0-0000-1000-8000-00805f9b34fb",
-    "0000ff00-0000-1000-8000-00805f9b34fb",
-    "0000fff0-0000-1000-8000-00805f9b34fb",
-    "49535343-fe7d-4ae5-8fa9-9fafd205e455",
-  ];
   const device = await navigator.bluetooth.requestDevice({
     acceptAllDevices: true,
     optionalServices: KNOWN_SERVICES,
   });
   const server = await device.gatt.connect().catch(async (err) => {
     // BLE printers accept only ONE active connection. Retry once, then explain.
-    await new Promise((r) => setTimeout(r, 700));
+    await sleep(700);
     return device.gatt.connect().catch(() => {
       throw new Error("Gagal terhubung ke printer. Printer thermal Bluetooth hanya bisa terhubung ke SATU perangkat dalam satu waktu — pastikan printer sudah diputuskan (disconnect) dari perangkat lain, dekat & menyala, lalu coba lagi. Untuk dipakai banyak perangkat sekaligus, gunakan mode USB/Desktop.");
     });
   });
-  const services = await server.getPrimaryServices();
-  let writable = null;
-  for (const s of services) {
-    const chars = await s.getCharacteristics();
-    for (const c of chars) {
-      if (c.properties.write || c.properties.writeWithoutResponse) { writable = c; break; }
-    }
-    if (writable) break;
-  }
+  const writable = await locateWritable(server);
   if (!writable) throw new Error("Karakteristik tulis printer tidak ditemukan. Pastikan printer mendukung BLE.");
   btDevice = device;
   btChar = writable;
   btName = device.name || "Printer Thermal";
-  device.addEventListener("gattserverdisconnected", () => { btChar = null; });
+  btKeepStay = true;
+  try { setDevicePrinterConfig({ last_device_id: device.id, last_device_name: btName }); } catch (e) {}
+  armConnection(device);
+  notifyBt("connected");
   return btName;
 }
 
+// Silently restore a previously-permitted printer after a page reload/navigation
+// (Chrome only). No user gesture required for devices already granted permission.
+export async function restorePrinterConnection() {
+  if (btChar) return btName;               // already connected
+  if (!bluetoothSupported() || !navigator.bluetooth.getDevices) return "";
+  const cfg = getDevicePrinterConfig();
+  if (!cfg.last_device_id) return "";
+  try {
+    const devices = await navigator.bluetooth.getDevices();
+    const dev = devices.find((d) => d.id === cfg.last_device_id) || devices.find((d) => d.name === cfg.last_device_name);
+    if (!dev) return "";
+    btDevice = dev;
+    btName = dev.name || cfg.last_device_name || "Printer Thermal";
+    btKeepStay = true;
+    armConnection(dev);
+    const ok = await reconnectPrinter(4);
+    return ok ? btName : "";
+  } catch (e) { return ""; }
+}
+
 export function disconnectPrinter() {
+  btKeepStay = false;
+  stopWatchdog();
   try { if (btDevice?.gatt?.connected) btDevice.gatt.disconnect(); } catch (e) {}
   btChar = null; btDevice = null; btName = "";
+  notifyBt("disconnected");
 }
 
 async function writeBytes(bytes) {
   const CHUNK = 180;
   for (let i = 0; i < bytes.length; i += CHUNK) {
     const chunk = bytes.slice(i, i + CHUNK);
-    if (btChar.properties.writeWithoutResponse) await btChar.writeValueWithoutResponse(chunk);
-    else await btChar.writeValue(chunk);
-    await new Promise((r) => setTimeout(r, 20));
+    await safeWrite(async (ch) => {
+      if (ch.properties.writeWithoutResponse) await ch.writeValueWithoutResponse(chunk);
+      else await ch.writeValue(chunk);
+    });
+    await sleep(20);
   }
 }
 
@@ -365,8 +475,26 @@ export async function printReceiptSmart(r, settings) {
   if (dev.paper_width) merged.paper_width = dev.paper_width;
   const mode = merged.print_mode || "desktop";
   if (mode === "bluetooth") {
+    // If the link dropped momentarily, try to restore it before giving up.
+    if (!isPrinterConnected() && btDevice && btKeepStay) {
+      await reconnectPrinter(6);
+    }
     if (!isPrinterConnected()) throw new Error("Printer Bluetooth belum terhubung di perangkat ini. Hubungkan dulu lewat menu Pengaturan, atau gunakan mode USB/Desktop agar bisa dipakai banyak perangkat.");
-    await writeBytes(await buildEscPos(r, merged));
+    const payload = await buildEscPos(r, merged);
+    try {
+      await writeBytes(payload);
+    } catch (e) {
+      // The link may have died silently (idle GATT death) without a disconnect
+      // event yet. Reconnect and retry the full receipt once before failing.
+      btChar = null;
+      const ok = await reconnectPrinter(6);
+      if (!ok) throw new Error("Printer Bluetooth terputus. Pastikan printer menyala & berada dekat, lalu coba cetak lagi.");
+      try {
+        await writeBytes(payload);
+      } catch (e2) {
+        throw new Error("Gagal mengirim ke printer Bluetooth. Pastikan printer menyala & dekat, lalu coba cetak lagi.");
+      }
+    }
     return "bluetooth";
   }
   printDesktop(r, merged);
