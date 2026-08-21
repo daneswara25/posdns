@@ -958,7 +958,7 @@ export default function POS() {
                       <span>{i.qty}x {i.name}</span>
                       <span>{rupiah(i.price * i.qty)}</span>
                     </div>
-                    <p className="pl-2 text-muted-foreground">@{rupiah(i.price)}{i.note ? ` • ${i.note}` : ""}</p>
+                    <p className="pl-2 text-muted-foreground">{rupiah(i.price)} x {i.qty}{i.note ? ` • ${i.note}` : ""}</p>
                   </div>
                 ))}
                 <div className="my-2 border-t border-dashed" />

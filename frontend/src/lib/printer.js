@@ -60,7 +60,7 @@ export function buildReceiptText(r, settings = {}) {
   L.push("--------------------------------");
   (r.items || []).forEach((i) => {
     L.push(`${i.qty} x ${i.name}`);
-    L.push(`     @${rp(i.price)}  =  ${rp(i.price * i.qty)}`);
+    L.push(`     ${i.qty} x ${rp(i.price)}  =  ${rp(i.price * i.qty)}`);
     if (i.note) L.push(`     * ${i.note}`);
   });
   L.push("--------------------------------");
@@ -259,7 +259,7 @@ async function buildEscPos(r, settings) {
   text(divider);
   (r.items || []).forEach((i) => {
     text(`${i.qty}x ${i.name}\n`);
-    text(`  @${rp(i.price)}\n`);
+    text(`  ${rp(i.price)} x ${i.qty}\n`);
     text(row("", rp(i.price * i.qty)));
     if (i.note) text(`  * ${i.note}\n`);
   });
@@ -297,7 +297,7 @@ export function printDesktop(r, settings) {
   const logo = settings.logo || `${window.location.origin}/logo.png`;
   const line = (l, rr) => `<div class="row"><span>${l}</span><span>${rr}</span></div>`;
   const items = (r.items || [])
-    .map((i) => line(`${i.qty}x ${i.name}`, rp(i.price * i.qty)) + `<div class="note">@${rp(i.price)}</div>` + (i.note ? `<div class="note">* ${i.note}</div>` : ""))
+    .map((i) => line(`${i.qty}x ${i.name}`, rp(i.price * i.qty)) + `<div class="note">${rp(i.price)} x ${i.qty}</div>` + (i.note ? `<div class="note">* ${i.note}</div>` : ""))
     .join("");
   const isDraft = r.__draft === true || r.status === "Draft";
   const isOrder = r.deposit_amount != null && r.remaining != null && !r.paid_amount;

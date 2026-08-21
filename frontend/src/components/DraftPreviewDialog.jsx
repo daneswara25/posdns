@@ -24,7 +24,7 @@ export function buildDraftText(o, settings = {}) {
   L.push("--------------------------------");
   (o.items || []).forEach((i) => {
     L.push(`${i.qty} x ${i.name}`);
-    L.push(`     @${rp(i.price)}  =  ${rp(i.price * i.qty)}`);
+    L.push(`     ${i.qty} x ${rp(i.price)}  =  ${rp(i.price * i.qty)}`);
     if (i.note) L.push(`     * ${i.note}`);
   });
   L.push("--------------------------------");

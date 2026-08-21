@@ -331,7 +331,11 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
   - Edit (`edit-po-*`) & Hapus (`delete-po-*`): HANYA untuk PO status "Menunggu". Backend `PUT /purchases/{pid}` & `DELETE /purchases/{pid}` menolak PO "Diterima" (400) agar stok tidak kacau. Edit memakai ulang form Buat PO (prefill supplier/item/catatan).
 - Verified: curl (description tersimpan; PUT/DELETE Menunggu OK; PUT/DELETE Diterima → 400) + screenshot (baris Menunggu tampil 4 aksi, Diterima hanya Preview, dialog Preview menampilkan detail). Data uji dibersihkan.
 
-## Update (2026-06) — Label Total di dialog pilih varian (POS)
+## Update (2026-06) — Ganti "@" harga satuan → "{harga} x {qty}" (thermal-safe)
+- FIXED: karakter "@" pada baris harga satuan tercetak sebagai kotak hitam di printer termal. Diganti jadi format `Rp{harga} x {qty}` di SEMUA output struk: thermal ESC/POS (`printer.js` buildEscPos), desktop print (printDesktop), teks WhatsApp (copyReceiptText & DraftPreviewDialog), preview di layar (`NotaDialog.jsx`), keranjang POS (`POS.jsx`). Share image card sudah pakai format tsb.
+- Teruji screenshot: preview nota menampilkan "Rp38.000 x 1" (tanpa "@").
+
+
 - ADDED (`POS.jsx` variant picker dialog): label **TOTAL (N item)** + nominal di pojok kanan atas header, menghitung Σ(harga × qty) item terpilih real-time. Fallback harga: `x.price ?? product.price` (item non-manual tidak menyimpan price di tempItems). data-testid: `variant-total-label`, `variant-total-amount`.
 - Teruji screenshot: 3×Rp8.000 + 1×Rp13.000 = Rp37.000 tampil benar; count "4 item" akurat.
 
