@@ -733,8 +733,25 @@ export default function POS() {
       <Dialog open={!!variantCat} onOpenChange={(o) => { if (!o) { commitVariants(); setVariantCat(null); setTimeout(() => { document.body.style.pointerEvents = ""; }, 100); } }}>
         <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden p-0 sm:max-w-lg" onCloseAutoFocus={() => { document.body.style.pointerEvents = ""; }} data-testid="variant-dialog">
           <DialogHeader className="shrink-0 border-b border-border px-5 pb-3 pt-5">
-            <DialogTitle className="font-display">{variantCat?.name}</DialogTitle>
-            <p className="text-xs text-muted-foreground">Pilih varian untuk ditambahkan ke keranjang</p>
+            <div className="flex items-start justify-between gap-3 pr-6">
+              <div className="min-w-0">
+                <DialogTitle className="font-display">{variantCat?.name}</DialogTitle>
+                <p className="text-xs text-muted-foreground">Pilih varian untuk ditambahkan ke keranjang</p>
+              </div>
+              {(() => {
+                const cnt = tempItems.reduce((s, x) => s + x.qty, 0);
+                const tot = tempItems.reduce((s, x) => {
+                  const unit = x.price != null ? Number(x.price) : (Number(x.product?.price) || 0);
+                  return s + unit * x.qty;
+                }, 0);
+                return (
+                  <div className="shrink-0 text-right" data-testid="variant-total-label">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Total {cnt > 0 ? `(${cnt} item)` : ""}</p>
+                    <p className="font-display text-lg font-bold text-primary" data-testid="variant-total-amount">{rupiah(tot)}</p>
+                  </div>
+                );
+              })()}
+            </div>
           </DialogHeader>
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3">
             <div className="space-y-2">

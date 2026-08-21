@@ -331,7 +331,11 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
   - Edit (`edit-po-*`) & Hapus (`delete-po-*`): HANYA untuk PO status "Menunggu". Backend `PUT /purchases/{pid}` & `DELETE /purchases/{pid}` menolak PO "Diterima" (400) agar stok tidak kacau. Edit memakai ulang form Buat PO (prefill supplier/item/catatan).
 - Verified: curl (description tersimpan; PUT/DELETE Menunggu OK; PUT/DELETE Diterima → 400) + screenshot (baris Menunggu tampil 4 aksi, Diterima hanya Preview, dialog Preview menampilkan detail). Data uji dibersihkan.
 
-## Update (2026-06) — Fix bagikan gambar nota tidak stabil + Cetak Draft
+## Update (2026-06) — Label Total di dialog pilih varian (POS)
+- ADDED (`POS.jsx` variant picker dialog): label **TOTAL (N item)** + nominal di pojok kanan atas header, menghitung Σ(harga × qty) item terpilih real-time. Fallback harga: `x.price ?? product.price` (item non-manual tidak menyimpan price di tempItems). data-testid: `variant-total-label`, `variant-total-amount`.
+- Teruji screenshot: 3×Rp8.000 + 1×Rp13.000 = Rp37.000 tampil benar; count "4 item" akurat.
+
+
 - FIXED (`lib/captureImage.js` NEW): util `captureToBlob` untuk render gambar stabil — tunggu semua `<img>` termuat (waitForImages), tunggu `document.fonts.ready`, retry hingga 3x, fallback `toBlob`→`dataURL`. `shareOrDownload` share (mobile)/unduh (desktop). Root cause instabilitas: html2canvas mengambil snapshot sebelum logo/font selesai dimuat.
 - CHANGED share image ke util baru di: `NotaDialog.jsx` (ShareNotaImageButton), `DraftPreviewDialog.jsx`, dan `VoucherDialog.jsx` (Pengeluaran/Pendapatan) — semua kini pakai captureToBlob yang stabil.
 - ADDED cetak untuk pesanan DRAFT: tombol **Cetak** di kartu draft (`print-draft-*`) & di dialog Preview (`draft-print-button`) → `printReceiptSmart({...order,__draft:true})` (thermal/desktop per-device). `printer.js`: `paymentStatus` draft = "BELUM DIBAYAR"; printDesktop & buildEscPos skip baris pembayaran utk draft.
