@@ -64,11 +64,14 @@ export default function Orders() {
   const [editDiscount, setEditDiscount] = useState("");
   const [editName, setEditName] = useState("");
   const [editType, setEditType] = useState("Reguler");
+  const [customers, setCustomers] = useState([]);
+  const [nameSuggestOpen, setNameSuggestOpen] = useState(false);
 
   const load = () => { api.get("/orders").then((r) => setList(r.data)); };
   useEffect(() => {
     load();
     api.get("/settings").then((r) => setSettings(r.data || {}));
+    api.get("/customers").then((r) => setCustomers(r.data || [])).catch(() => {});
   }, []);
 
   const complete = async () => {
@@ -249,7 +252,40 @@ export default function Orders() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1">
                 <Label>Nama Pesanan / Pelanggan</Label>
-                <Input value={editName} onChange={(e) => setEditName(e.target.value)} data-testid="edit-name-input" />
+                <div className="relative">
+                  <Input
+                    value={editName}
+                    onChange={(e) => { setEditName(e.target.value); setNameSuggestOpen(true); }}
+                    onFocus={() => setNameSuggestOpen(true)}
+                    onBlur={() => setTimeout(() => setNameSuggestOpen(false), 150)}
+                    placeholder="Ketik untuk cari pelanggan..."
+                    autoComplete="off"
+                    data-testid="edit-name-input"
+                  />
+                  {nameSuggestOpen && (() => {
+                    const q = editName.trim().toLowerCase();
+                    const matches = customers
+                      .filter((c) => !q || `${c.name} ${c.phone || ""}`.toLowerCase().includes(q))
+                      .slice(0, 6);
+                    if (matches.length === 0) return null;
+                    return (
+                      <div className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-md border border-border bg-popover shadow-lg" data-testid="edit-name-suggestions">
+                        {matches.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onMouseDown={(e) => { e.preventDefault(); setEditName(c.name); setNameSuggestOpen(false); }}
+                            className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
+                            data-testid={`edit-name-option-${c.id}`}
+                          >
+                            <span className="truncate font-medium">{c.name}</span>
+                            {c.phone ? <span className="shrink-0 text-xs text-muted-foreground">{c.phone}</span> : null}
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
               <div className="space-y-1">
                 <Label>Jenis Pesanan</Label>

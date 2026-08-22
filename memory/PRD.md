@@ -331,7 +331,11 @@ Aplikasi POS berbasis cloud modern: Dashboard Web (Owner/Admin), Mobile POS, Cus
   - Edit (`edit-po-*`) & Hapus (`delete-po-*`): HANYA untuk PO status "Menunggu". Backend `PUT /purchases/{pid}` & `DELETE /purchases/{pid}` menolak PO "Diterima" (400) agar stok tidak kacau. Edit memakai ulang form Buat PO (prefill supplier/item/catatan).
 - Verified: curl (description tersimpan; PUT/DELETE Menunggu OK; PUT/DELETE Diterima → 400) + screenshot (baris Menunggu tampil 4 aksi, Diterima hanya Preview, dialog Preview menampilkan detail). Data uji dibersihkan.
 
-## Update (2026-06) — FIX koneksi printer Bluetooth putus tiba-tiba
+## Update (2026-06) — Autocomplete pelanggan di form Edit Draft
+- ADDED (`Orders.jsx`): field "Nama Pesanan / Pelanggan" di dialog Edit Draft kini autocomplete — mengetik menampilkan saran pelanggan (nama/telp) mirip pencarian di POS; klik saran mengisi nama. Tetap boleh ketik nama bebas (draft tak wajib pelanggan terdaftar). Fetch `/customers` saat mount. testids: `edit-name-suggestions`, `edit-name-option-*`.
+- Teruji screenshot: ketik "git" → saran GITA/Regita, klik mengisi field. Data uji draft dibersihkan.
+
+
 - ROOT CAUSE: BLE GATT idle-death + tidak ada auto-reconnect (dulu hanya set btChar=null saat disconnect). Juga print gagal saat link mati diam-diam.
 - FIXED (`lib/printer.js`): (1) **keep-alive** kirim byte NUL tiap 8 dtk (watchdog) agar link tak idle-timeout; (2) **auto-reconnect** dgn backoff pada event `gattserverdisconnected` + watchdog cek `gatt.connected`; (3) **safeWrite mutex** cegah tabrakan write; (4) **restorePrinterConnection()** via `navigator.bluetooth.getDevices()` sambung ulang setelah reload TANPA klik user; (5) `printReceiptSmart` bluetooth: reconnect+retry 1x bila write gagal (link mati diam-diam) + pesan error ramah Bahasa Indonesia; (6) `setDevicePrinterConfig` kini MERGE (simpan last_device_id/name).
 - FIXED (`components/Layout.jsx`): `restorePrinterConnection()` dipanggil di root layout → link tersambung ulang di SEMUA halaman/refresh, bukan hanya /pengaturan.
